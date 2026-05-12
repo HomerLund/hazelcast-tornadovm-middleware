@@ -1,15 +1,19 @@
-package kpi.diploma.middleware.common.userprojects.facerecognition.data.preparation;
+package kpi.diploma.userprojects.facerecognition.data.preparation;
 
-import  kpi.diploma.middleware.common.userprojects.facerecognition.data.raw.*;
+import  kpi.diploma.userprojects.facerecognition.data.raw.*;
+import kpi.diploma.userprojects.facerecognition.data.raw.RawDataReader;
+import kpi.diploma.userprojects.facerecognition.data.raw.SingleFolderDiskReader;
 
 import java.nio.file.Paths;
+import java.util.List;
 
 public class SetupData {
     public static void main(String[] args){
         System.out.println("Preparing the dataset structure");
 
-        String rawDataPath = Paths.get("userprojects", "facerecognition", "assets", "dataset", "raw").toString();
-        RawDataReader reader = new SingleFolderDiskReader(rawDataPath);
+        String rawDataPath = Paths.get("userprojects", "facerecognition", "assets", "dataset", "raw", "Dataset").toString();
+        List<String> extensions = List.of(".jpg", ".jpeg", ".png", ".bmp");
+        RawDataReader reader = new SingleFolderDiskReader(rawDataPath, extensions);
 
         double trainingRatio = 0.8;
         String keyFaceWord = "human";

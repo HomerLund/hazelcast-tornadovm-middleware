@@ -1,4 +1,4 @@
-package kpi.diploma.middleware.common.userprojects.facerecognition.model.loss;
+package kpi.diploma.userprojects.facerecognition.model.loss;
 
 import java.io.Serializable;
 

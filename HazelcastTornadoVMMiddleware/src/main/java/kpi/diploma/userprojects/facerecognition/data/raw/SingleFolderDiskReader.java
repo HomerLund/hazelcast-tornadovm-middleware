@@ -1,17 +1,20 @@
-package kpi.diploma.middleware.common.userprojects.facerecognition.data.raw;
+package kpi.diploma.userprojects.facerecognition.data.raw;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collections;
+import java.util.List;
 
 
 // Groups photo into two groups (faces and non-faces) and returns two lists of file paths from these groups
 public class SingleFolderDiskReader implements RawDataReader{
     private final String sourcePath;
+    private final List<String> extensions;
 
-    public SingleFolderDiskReader(String sourcePath){
+    public SingleFolderDiskReader(String sourcePath, List<String> extensions){
         this.sourcePath = sourcePath;
+        this.extensions = extensions;
     }
 
     @Override
@@ -22,8 +25,10 @@ public class SingleFolderDiskReader implements RawDataReader{
             throw new IllegalArgumentException("Error: Folder not found: " + sourcePath);
         }
 
-        File[] files = folder.listFiles(((dir, name) ->
-                name.toLowerCase().endsWith(".jpg") || name.toLowerCase().endsWith(".png")));
+        File[] files = folder.listFiles((dir, name) -> {
+            String lowerName = name.toLowerCase();
+            return extensions.stream().anyMatch(lowerName::endsWith);
+        });
 
         if (files == null || files.length == 0){
             System.err.println("Warning: No files found in the folder");

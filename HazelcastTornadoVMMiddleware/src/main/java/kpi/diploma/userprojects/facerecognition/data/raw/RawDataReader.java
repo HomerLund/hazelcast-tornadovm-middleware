@@ -1,4 +1,4 @@
-package kpi.diploma.middleware.common.userprojects.facerecognition.data.raw;
+package kpi.diploma.userprojects.facerecognition.data.raw;
 
 import java.io.Serializable;
 
