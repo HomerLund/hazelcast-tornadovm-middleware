@@ -13,7 +13,7 @@ public class ImageResizer implements DataProcessor{
     private final int targetWidth;
     private final int targetHeight;
 
-    ImageResizer(int targetWidth, int targetHeight){
+    public ImageResizer(int targetWidth, int targetHeight){
         this.targetWidth = targetWidth;
         this.targetHeight = targetHeight;
     }
