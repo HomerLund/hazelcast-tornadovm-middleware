@@ -1,5 +1,7 @@
 package kpi.diploma.userprojects.facerecognition.data.raw.readers;
 
+import kpi.diploma.userprojects.facerecognition.data.raw.RawData;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
