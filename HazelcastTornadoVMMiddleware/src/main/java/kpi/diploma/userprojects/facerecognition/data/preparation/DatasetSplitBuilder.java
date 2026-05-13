@@ -30,6 +30,29 @@ public class DatasetSplitBuilder implements Serializable {
         this.baseTargetFolderPath = Paths.get(baseTargetFolderPath, mainFolder).toString();
     }
 
+    public void buildDatasetStructure(){
+        Path basePath = Paths.get(baseTargetFolderPath);
+
+        cleanOldData();
+        createStructure();
+
+        for (RawData data : dataReader.streamRaw()){
+            boolean isTrain = Math.random() < trainingRatio;
+            boolean isFace = data.name().toLowerCase().contains(keyFaceWord.toLowerCase());
+
+            Path targetFolder = basePath
+                    .resolve(isTrain ? "train" : "test")
+                    .resolve(isFace ? "face" : "nonface");
+
+            try{
+                Files.write(targetFolder.resolve(data.name()), data.content());
+            }
+            catch (IOException e){
+                System.err.println("Error: Error while writing data");
+            }
+        }
+    }
+
     private void createStructure(){
         Path basePath = Paths.get(baseTargetFolderPath);
 
@@ -49,7 +72,7 @@ public class DatasetSplitBuilder implements Serializable {
         }
     }
 
-    public void cleanOldData(){
+    private void cleanOldData(){
         Path basePath = Paths.get(baseTargetFolderPath);
 
         if (!basePath.getFileName().toString().equals(mainFolder)){
@@ -70,29 +93,6 @@ public class DatasetSplitBuilder implements Serializable {
             }
             catch(IOException e){
                 throw new RuntimeException("Error: Failed to clean the old data");
-            }
-        }
-    }
-
-    public void buildDatasetStructure(){
-        Path basePath = Paths.get(baseTargetFolderPath);
-
-        cleanOldData();
-        createStructure();
-
-        for (RawData data : dataReader.streamRaw()){
-            boolean isTrain = Math.random() < trainingRatio;
-            boolean isFace = data.name().toLowerCase().contains(keyFaceWord.toLowerCase());
-
-            Path targetFolder = basePath
-                    .resolve(isTrain ? "train" : "test")
-                    .resolve(isFace ? "face" : "nonface");
-
-            try{
-                Files.write(targetFolder.resolve(data.name()), data.content());
-            }
-            catch (IOException e){
-                System.err.println("Error: Error while writing data");
             }
         }
     }
