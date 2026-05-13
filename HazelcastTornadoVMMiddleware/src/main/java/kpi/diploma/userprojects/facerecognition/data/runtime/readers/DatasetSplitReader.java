@@ -1,6 +1,7 @@
 package kpi.diploma.userprojects.facerecognition.data.runtime.readers;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -8,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-public class DatasetSplitReader {
+public class DatasetSplitReader implements Serializable {
     private final String targetFolderPath;
     private final List<String> extensions;
 
@@ -36,7 +37,7 @@ public class DatasetSplitReader {
                         String splitName = filePath.getParent().getParent().getFileName().toString();
                         boolean isTrain = splitName.equalsIgnoreCase("train");
 
-                        items.add(new DatasetItem(filePath, label, isTrain));
+                        items.add(new DatasetItem(filePath.toString(), label, isTrain));
                     });
         }
         catch (IOException e){

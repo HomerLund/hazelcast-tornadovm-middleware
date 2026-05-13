@@ -1,9 +1,9 @@
 package kpi.diploma.userprojects.facerecognition.data.runtime.readers;
 
-import java.nio.file.Path;
+import java.io.Serializable;
 
 public record DatasetItem(
-        Path filePath,
+        String filePath,
         String label,
         boolean isTrain
-) {}
+) implements Serializable {}
