@@ -1,6 +1,7 @@
 package kpi.diploma.userprojects.facerecognition.data.preparation;
 
-import kpi.diploma.userprojects.facerecognition.data.raw.*;
+import kpi.diploma.userprojects.facerecognition.data.raw.readers.RawData;
+import kpi.diploma.userprojects.facerecognition.data.raw.readers.RawDataReader;
 
 import java.io.IOException;
 import java.io.Serializable;

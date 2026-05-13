@@ -1,4 +1,4 @@
-package kpi.diploma.userprojects.facerecognition.data.raw;
+package kpi.diploma.userprojects.facerecognition.data.raw.readers;
 
 import java.io.File;
 import java.io.IOException;

@@ -1,8 +1,7 @@
 package kpi.diploma.userprojects.facerecognition.data.preparation;
 
-import  kpi.diploma.userprojects.facerecognition.data.raw.*;
-import kpi.diploma.userprojects.facerecognition.data.raw.RawDataReader;
-import kpi.diploma.userprojects.facerecognition.data.raw.SingleFolderDiskReader;
+import kpi.diploma.userprojects.facerecognition.data.raw.readers.RawDataReader;
+import kpi.diploma.userprojects.facerecognition.data.raw.readers.SingleFolderDiskReader;
 
 import java.nio.file.Paths;
 import java.util.List;
