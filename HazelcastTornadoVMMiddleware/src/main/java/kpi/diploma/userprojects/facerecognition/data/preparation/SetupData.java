@@ -1,5 +1,9 @@
 package kpi.diploma.userprojects.facerecognition.data.preparation;
 
+import kpi.diploma.userprojects.facerecognition.data.raw.RawData;
+import kpi.diploma.userprojects.facerecognition.data.raw.processors.DataProcessor;
+import kpi.diploma.userprojects.facerecognition.data.raw.processors.ImageResizer;
+import kpi.diploma.userprojects.facerecognition.data.raw.readers.PipelineDatasetReader;
 import kpi.diploma.userprojects.facerecognition.data.raw.readers.RawDataReader;
 import kpi.diploma.userprojects.facerecognition.data.raw.readers.SingleFolderDiskReader;
 
@@ -14,12 +18,16 @@ public class SetupData {
         List<String> extensions = List.of(".jpg", ".jpeg", ".png", ".bmp");
         RawDataReader reader = new SingleFolderDiskReader(rawDataPath, extensions);
 
+        List<DataProcessor> processors = List.of(new ImageResizer(256, 256));
+
+        RawDataReader pipelineReader = new PipelineDatasetReader(reader, processors);
+
         double trainingRatio = 0.8;
         String keyFaceWord = "human";
         String targetPath = Paths.get("userprojects", "facerecognition", "assets", "dataset").toString();
 
         try{
-            DatasetSplitBuilder builder = new DatasetSplitBuilder(reader, trainingRatio, keyFaceWord, targetPath);
+            DatasetSplitBuilder builder = new DatasetSplitBuilder(pipelineReader, trainingRatio, keyFaceWord, targetPath);
 
             builder.buildDatasetStructure();
 
