@@ -1,4 +1,4 @@
-package kpi.diploma.userprojects.facerecognition.data.runtime.loaders;
+package kpi.diploma.userprojects.facerecognition.data.runtime.loaders.imageloader;
 
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem;
 
@@ -17,8 +17,8 @@ public class ImageLoader implements Serializable {
         this.itemsToLoad = itemsToLoad;
     }
 
-    public Stream<LoadedItem> streamImage(){
-        return itemsToLoad.stream().map(item -> {
+    public Iterable<LoadedItem> streamImage(){
+        return () -> itemsToLoad.stream().map(item -> {
             try{
                 byte[] content = Files.readAllBytes(Paths.get(item.filePath()));
                 return new LoadedItem(item, content);
@@ -26,6 +26,6 @@ public class ImageLoader implements Serializable {
             catch(IOException e){
                 throw new RuntimeException("Error: File read error: " + item.filePath(), e);
             }
-        });
+        }).iterator();
     }
 }

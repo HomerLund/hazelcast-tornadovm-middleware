@@ -1,4 +1,4 @@
-package kpi.diploma.userprojects.facerecognition.data.runtime.loaders;
+package kpi.diploma.userprojects.facerecognition.data.runtime.loaders.imageloader;
 
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem;
 
