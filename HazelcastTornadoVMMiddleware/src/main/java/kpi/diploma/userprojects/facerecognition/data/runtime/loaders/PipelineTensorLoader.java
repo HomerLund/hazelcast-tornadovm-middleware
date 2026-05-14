@@ -44,16 +44,17 @@ public class PipelineTensorLoader {
     private float[] convertToFloatArray(BufferedImage image){
         int width = image.getWidth();
         int height = image.getHeight();
+
+        int[] rgbArray = new int[width * height];
+        image.getRGB(0, 0, width, height, rgbArray, 0, width);
+
         float[] pixels = new float[width * height * 3];
 
         int i = 0;
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int rgb = image.getRGB(x, y);
-                pixels[i++] = (rgb >> 16) & 0xFF;
-                pixels[i++] = (rgb >> 8) & 0xFF;
-                pixels[i++] = rgb & 0xFF;
-            }
+        for (int rgb : rgbArray) {
+            pixels[i++] = (rgb >> 16) & 0xFF;
+            pixels[i++] = (rgb >> 8) & 0xFF;
+            pixels[i++] = rgb & 0xFF;
         }
 
         return pixels;
