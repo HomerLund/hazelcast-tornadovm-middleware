@@ -14,7 +14,7 @@ public class SetupData {
     public static void main(String[] args){
         System.out.println("Preparing the dataset structure");
 
-        String rawDataPath = Paths.get("userprojects", "facerecognition", "assets", "dataset", "raw", "Dataset").toString();
+        String rawDataPath = Paths.get("userprojects", "facerecognition", "assets", "dataset", "data", "raw", "Dataset").toString();
         List<String> extensions = List.of(".jpg", ".jpeg", ".png", ".bmp");
         RawDataReader reader = new SingleFolderDiskReader(rawDataPath, extensions);
 
@@ -24,7 +24,7 @@ public class SetupData {
 
         double trainingRatio = 0.8;
         String keyFaceWord = "human";
-        String targetPath = Paths.get("userprojects", "facerecognition", "assets", "dataset").toString();
+        String targetPath = Paths.get("userprojects", "facerecognition", "assets", "dataset", "data").toString();
 
         try{
             DatasetSplitBuilder builder = new DatasetSplitBuilder(pipelineReader, trainingRatio, keyFaceWord, targetPath);
