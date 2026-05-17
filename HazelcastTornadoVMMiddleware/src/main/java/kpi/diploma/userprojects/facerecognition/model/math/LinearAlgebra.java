@@ -1,6 +1,6 @@
 package kpi.diploma.userprojects.facerecognition.model.math;
 
-public class MatrixOperations {
+public class LinearAlgebra {
     public static void forwardBatch(
             float[] weights, int outputSize, int inputSize,
             float[] batchInput, int batchSize,
