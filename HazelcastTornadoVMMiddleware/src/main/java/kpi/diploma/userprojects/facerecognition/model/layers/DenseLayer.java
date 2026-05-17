@@ -1,6 +1,6 @@
 package kpi.diploma.userprojects.facerecognition.model.layers;
 
-import kpi.diploma.userprojects.facerecognition.model.math.MatrixOperations;
+import kpi.diploma.userprojects.facerecognition.model.math.LinearAlgebra;
 
 import java.util.Random;
 
@@ -64,12 +64,12 @@ public class DenseLayer implements Layer{
         int batchSize = input.length / inputSize;
         ensureCapacity(batchSize);
 
-        MatrixOperations.forwardBatch(
+        LinearAlgebra.forwardBatch(
                 weights, outputSize, inputSize,
                 input, batchSize, wXBuffer
         );
 
-        MatrixOperations.addBiasesBatch(
+        LinearAlgebra.addBiasesBatch(
                 wXBuffer, biases, outputCache,
                 batchSize, outputSize
         );
@@ -80,18 +80,18 @@ public class DenseLayer implements Layer{
 
     @Override
     public float[] backward(float[] outputGradient){
-        MatrixOperations.backwardBatch(
+        LinearAlgebra.backwardBatch(
                 weights, outputSize, inputSize,
                 inputCache, outputGradient, currentBatchSize,
                 expandedWeightGradients, expandedBiasGradients, inputGradient
         );
 
-        MatrixOperations.averageGradients(
+        LinearAlgebra.averageGradients(
                 expandedWeightGradients, finalWeightGradients,
                 currentBatchSize, outputSize * inputSize
         );
 
-        MatrixOperations.averageGradients(
+        LinearAlgebra.averageGradients(
                 expandedBiasGradients, finalBiasGradients,
                 currentBatchSize, outputSize
         );
