@@ -6,10 +6,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 
-public class ImageLoader implements Serializable {
+public class ImageLoader implements Iterable<LoadedItem>, Serializable {
     private final List<DatasetItem> itemsToLoad;
 
 
@@ -17,8 +18,9 @@ public class ImageLoader implements Serializable {
         this.itemsToLoad = itemsToLoad;
     }
 
-    public Iterable<LoadedItem> streamImage(){
-        return () -> itemsToLoad.stream().map(item -> {
+    @Override
+    public Iterator<LoadedItem> iterator(){
+        return itemsToLoad.stream().map(item -> {
             try{
                 byte[] content = Files.readAllBytes(Paths.get(item.filePath()));
                 return new LoadedItem(item, content);
