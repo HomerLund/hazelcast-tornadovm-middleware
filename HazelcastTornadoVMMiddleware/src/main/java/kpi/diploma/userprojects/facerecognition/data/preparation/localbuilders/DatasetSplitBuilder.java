@@ -1,4 +1,4 @@
-package kpi.diploma.userprojects.facerecognition.data.preparation;
+package kpi.diploma.userprojects.facerecognition.data.preparation.localbuilders;
 
 import kpi.diploma.userprojects.facerecognition.data.raw.RawData;
 import kpi.diploma.userprojects.facerecognition.data.raw.readers.RawDataReader;

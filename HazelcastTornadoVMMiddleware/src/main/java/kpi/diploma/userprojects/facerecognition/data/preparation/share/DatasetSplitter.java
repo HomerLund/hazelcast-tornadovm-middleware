@@ -1,4 +1,4 @@
-package kpi.diploma.userprojects.facerecognition.data.share;
+package kpi.diploma.userprojects.facerecognition.data.preparation.share;
 
 public class DatasetSplitter {
 
