@@ -1,4 +1,4 @@
-package kpi.diploma.userprojects.facerecognition.data.runtime.loaders;
+package kpi.diploma.userprojects.facerecognition.data.runtime.processors;
 
 public record TensorItem(
         float[] features,
