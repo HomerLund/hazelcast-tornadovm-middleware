@@ -15,6 +15,7 @@ public class SequentialTrainer {
     private final String datasetPath;
     private final int epochs;
     private final String targetLabel = "human";
+    private final float learningRate = 0.01f;
 
     public SequentialTrainer(NeuralNetwork network, String datasetPath, int epochs){
         this.network = network;
@@ -33,11 +34,12 @@ public class SequentialTrainer {
                 .filter(DatasetItem::isTrain)
                 .toList();
 
-        int trainSize = trainItems.size();
-
         List<DatasetItem> testItems = allItems.stream()
                 .filter(item -> !item.isTrain())
                 .toList();
+
+        int trainSize = trainItems.size();
+        int testSize = testItems.size();
 
         Iterable<TensorItem> trainPipeline = DataPipeline.fromLoader(new ImageLoader(trainItems))
                 .addProcessor(new ToTensorProcessor(targetLabel))
@@ -48,17 +50,61 @@ public class SequentialTrainer {
                 .build();
 
         for (int epoch = 1; epoch <= epochs; epoch++){
-            System.out.println("Epoch " + epoch + "/" + epochs);
+            System.out.println("---Epoch " + epoch + "/" + epochs + "---");
 
-            double totalLoss = 0.0;
-            int tensorProcessed = 0;
+            if (trainSize > 0) {
+                EpochMetrics trainMetrics = processEpoch(trainPipeline, trainSize, "Train", true);
+                System.out.println("Train | Loss: " + String.format("%.4f", trainMetrics.loss())
+                        + " | Accuracy: " + String.format("%.2f", trainMetrics.accuracy()) + "%");
+            }
 
-            for (TensorItem item : trainPipeline){
-                tensorProcessed++;
-                System.out.println("tensor " + tensorProcessed + "/" + trainSize);
+            if (testSize > 0){
+                EpochMetrics testMetrics = processEpoch(testPipeline, testSize, "Test", false);
+                System.out.println("Test | Loss: " + String.format("%.4f", testMetrics.loss())
+                        + " | Accuracy: " + String.format("%.2f", testMetrics.accuracy()) + "%");
             }
         }
 
-        System.out.println("Ending sequential training");
+        System.out.println("--- Ending sequential training ---");
+    }
+
+    private EpochMetrics processEpoch(Iterable<TensorItem> pipeline, int datasetSize, String phaseName, boolean isTraining){
+        double totalLoss = 0.0f;
+        int correct = 0;
+        int processed = 0;
+
+        for (TensorItem item : pipeline){
+            float[] prediction = network.forward(item.features());
+
+            if (isTraining){
+                network.backward(prediction, item.label());
+                network.updateWeights(learningRate);
+            }
+
+            totalLoss += calculateLoss(prediction, item.label());
+            if (isCorrect(prediction, item.label())){
+                correct++;
+            }
+
+            processed++;
+
+            System.out.println("tensor " + processed + "/" + datasetSize);
+            System.out.println("\r" + phaseName + " progress: " + processed + "/" + datasetSize);
+        }
+
+        System.out.println();
+
+        return new EpochMetrics(totalLoss / datasetSize, ((double)correct / datasetSize) * 100);
+    }
+
+    private double calculateLoss(float[] prediction, float[] label){
+        float p = Math.max(1e-7f, Math.min(1.0f - 1e-7f, prediction[0]));
+        return -(label[0] * Math.log(p) + (1 - label[0]) * Math.log(1 - p));
+    }
+
+    private boolean isCorrect(float[] prediction, float[] label){
+        boolean isPredicatedPositive = prediction[0] >= 0.5f;
+        boolean isActualPositive = label[0] == 1.0f;
+        return isActualPositive == isPredicatedPositive;
     }
 }
