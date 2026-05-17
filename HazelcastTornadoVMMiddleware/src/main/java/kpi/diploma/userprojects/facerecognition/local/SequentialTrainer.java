@@ -1,14 +1,14 @@
 package kpi.diploma.userprojects.facerecognition.local;
 
-import kpi.diploma.userprojects.facerecognition.data.runtime.loaders.PipelineTensorLoader;
-import kpi.diploma.userprojects.facerecognition.data.runtime.loaders.TensorItem;
+import kpi.diploma.userprojects.facerecognition.data.runtime.processors.TensorItem;
 import kpi.diploma.userprojects.facerecognition.data.runtime.loaders.imageloader.ImageLoader;
+import kpi.diploma.userprojects.facerecognition.data.runtime.pipeline.DataPipeline;
+import kpi.diploma.userprojects.facerecognition.data.runtime.processors.ToTensorProcessor;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetSplitReader;
 import kpi.diploma.userprojects.facerecognition.model.core.NeuralNetwork;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class SequentialTrainer {
     private final NeuralNetwork network;
@@ -39,8 +39,13 @@ public class SequentialTrainer {
                 .filter(item -> !item.isTrain())
                 .toList();
 
-        PipelineTensorLoader trainLoader = new PipelineTensorLoader(new ImageLoader(trainItems), targetLabel);
-        PipelineTensorLoader testLoader = new PipelineTensorLoader(new ImageLoader(testItems), targetLabel);
+        Iterable<TensorItem> trainPipeline = DataPipeline.fromLoader(new ImageLoader(trainItems))
+                .addProcessor(new ToTensorProcessor(targetLabel))
+                .build();
+
+        Iterable<TensorItem> testPipeline = DataPipeline.fromLoader(new ImageLoader(testItems))
+                .addProcessor(new ToTensorProcessor(targetLabel))
+                .build();
 
         for (int epoch = 1; epoch <= epochs; epoch++){
             System.out.println("Epoch " + epoch + "/" + epochs);
@@ -48,7 +53,7 @@ public class SequentialTrainer {
             double totalLoss = 0.0;
             int tensorProcessed = 0;
 
-            for (TensorItem item : trainLoader.streamTensors()){
+            for (TensorItem item : trainPipeline){
                 tensorProcessed++;
                 System.out.println("tensor " + tensorProcessed + "/" + trainSize);
             }
