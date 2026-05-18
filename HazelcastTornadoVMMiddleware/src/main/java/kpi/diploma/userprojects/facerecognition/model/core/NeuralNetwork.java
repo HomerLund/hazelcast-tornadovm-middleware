@@ -3,10 +3,11 @@ package kpi.diploma.userprojects.facerecognition.model.core;
 import kpi.diploma.userprojects.facerecognition.model.layers.Layer;
 import kpi.diploma.userprojects.facerecognition.model.loss.LossFunction;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NeuralNetwork {
+public class NeuralNetwork implements Serializable {
     private final List<Layer> layers = new ArrayList<>();
     private final LossFunction lossFunction;
 
