@@ -20,7 +20,7 @@ public class RunSequentialTrainer {
         String datasetPath = Paths.get("userprojects", "facerecognition", "assets",
                 "dataset", "data", "prepared").toString();
 
-        SequentialTrainer trainer = new SequentialTrainer(network, datasetPath, 1);
+        SequentialTrainer trainer = new SequentialTrainer(network, datasetPath, 10);
 
         trainer.startTraining();
     }
