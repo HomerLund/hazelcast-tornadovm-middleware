@@ -7,15 +7,18 @@ import kpi.diploma.userprojects.facerecognition.data.runtime.processors.ToTensor
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetSplitReader;
 import kpi.diploma.userprojects.facerecognition.model.core.NeuralNetwork;
+import kpi.diploma.userprojects.facerecognition.model.io.ModelSerializer;
 
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SequentialTrainer {
     private final NeuralNetwork network;
     private final String datasetPath;
     private final int epochs;
-    private final String targetLabel = "human";
-    private final float learningRate = 0.01f;
+    private final String targetLabel = "face";
+    private final float learningRate = 0.00001f;
 
     public SequentialTrainer(NeuralNetwork network, String datasetPath, int epochs){
         this.network = network;
@@ -30,27 +33,32 @@ public class SequentialTrainer {
         DatasetSplitReader reader = new DatasetSplitReader(datasetPath, extensions);
         List<DatasetItem> allItems = reader.readDataset();
 
-        List<DatasetItem> trainItems = allItems.stream()
+        List<DatasetItem> trainItems = new ArrayList<>(allItems.stream()
                 .filter(DatasetItem::isTrain)
-                .toList();
+                .toList());
 
-        List<DatasetItem> testItems = allItems.stream()
+        List<DatasetItem> testItems = new ArrayList<>(allItems.stream()
                 .filter(item -> !item.isTrain())
-                .toList();
+                .toList());
 
         int trainSize = trainItems.size();
         int testSize = testItems.size();
 
-        Iterable<TensorItem> trainPipeline = DataPipeline.fromLoader(new ImageLoader(trainItems))
-                .addProcessor(new ToTensorProcessor(targetLabel))
-                .build();
 
-        Iterable<TensorItem> testPipeline = DataPipeline.fromLoader(new ImageLoader(testItems))
-                .addProcessor(new ToTensorProcessor(targetLabel))
-                .build();
 
         for (int epoch = 1; epoch <= epochs; epoch++){
             System.out.println("---Epoch " + epoch + "/" + epochs + "---");
+
+            java.util.Collections.shuffle(trainItems);
+            java.util.Collections.shuffle(testItems);
+
+            Iterable<TensorItem> trainPipeline = DataPipeline.fromLoader(new ImageLoader(trainItems))
+                    .addProcessor(new ToTensorProcessor(targetLabel))
+                    .build();
+
+            Iterable<TensorItem> testPipeline = DataPipeline.fromLoader(new ImageLoader(testItems))
+                    .addProcessor(new ToTensorProcessor(targetLabel))
+                    .build();
 
             if (trainSize > 0) {
                 EpochMetrics trainMetrics = processEpoch(trainPipeline, trainSize, "Train", true);
@@ -58,14 +66,18 @@ public class SequentialTrainer {
                         + " | Accuracy: " + String.format("%.2f", trainMetrics.accuracy()) + "%");
             }
 
-            if (testSize > 0){
-                EpochMetrics testMetrics = processEpoch(testPipeline, testSize, "Test", false);
-                System.out.println("Test | Loss: " + String.format("%.4f", testMetrics.loss())
-                        + " | Accuracy: " + String.format("%.2f", testMetrics.accuracy()) + "%");
-            }
+            //if (testSize > 0){
+            //    EpochMetrics testMetrics = processEpoch(testPipeline, testSize, "Test", false);
+            //    System.out.println("Test | Loss: " + String.format("%.4f", testMetrics.loss())
+            //            + " | Accuracy: " + String.format("%.2f", testMetrics.accuracy()) + "%");
+            //}
         }
 
         System.out.println("--- Ending sequential training ---");
+
+        String savePath = Paths.get("userprojects", "facerecognition", "assets", "weights", "face_recognition.model").toString();
+
+        ModelSerializer.saveModel(network, savePath);
     }
 
     private EpochMetrics processEpoch(Iterable<TensorItem> pipeline, int datasetSize, String phaseName, boolean isTraining){
@@ -88,8 +100,8 @@ public class SequentialTrainer {
 
             processed++;
 
-            System.out.println("tensor " + processed + "/" + datasetSize);
-            System.out.println("\r" + phaseName + " progress: " + processed + "/" + datasetSize);
+            //System.out.println("tensor " + processed + "/" + datasetSize);
+            //System.out.println("\r" + phaseName + " progress: " + processed + "/" + datasetSize);
         }
 
         System.out.println();
