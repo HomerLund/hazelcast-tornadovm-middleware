@@ -66,11 +66,11 @@ public class SequentialTrainer {
                         + " | Accuracy: " + String.format("%.2f", trainMetrics.accuracy()) + "%");
             }
 
-            //if (testSize > 0){
-            //    EpochMetrics testMetrics = processEpoch(testPipeline, testSize, "Test", false);
-            //    System.out.println("Test | Loss: " + String.format("%.4f", testMetrics.loss())
-            //            + " | Accuracy: " + String.format("%.2f", testMetrics.accuracy()) + "%");
-            //}
+            if (testSize > 0){
+                EpochMetrics testMetrics = processEpoch(testPipeline, testSize, "Test", false);
+                System.out.println("Test | Loss: " + String.format("%.4f", testMetrics.loss())
+                        + " | Accuracy: " + String.format("%.2f", testMetrics.accuracy()) + "%");
+            }
         }
 
         System.out.println("--- Ending sequential training ---");
@@ -101,7 +101,7 @@ public class SequentialTrainer {
             processed++;
 
             //System.out.println("tensor " + processed + "/" + datasetSize);
-            //System.out.println("\r" + phaseName + " progress: " + processed + "/" + datasetSize);
+            System.out.println("\r" + phaseName + " progress: " + processed + "/" + datasetSize);
         }
 
         System.out.println();
