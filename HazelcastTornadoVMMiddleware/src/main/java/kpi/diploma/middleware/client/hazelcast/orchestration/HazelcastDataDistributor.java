@@ -7,11 +7,15 @@ import kpi.diploma.middleware.client.orchestration.ClusterDataDistributor;
 import kpi.diploma.middleware.core.data.distribution.DataPartitioner;
 import kpi.diploma.middleware.core.data.io.RemoteSourceLoader;
 import kpi.diploma.middleware.core.data.io.RemoteTargetWriter;
+import kpi.diploma.middleware.core.network.RemoteWorkspaceCleanupTask;
 import kpi.diploma.middleware.core.network.RemoteWriteTask;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
     private final HazelcastInstance hazelcastInstance;
@@ -22,41 +26,95 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
         this.executorService = hazelcastInstance.getExecutorService("cluster-io-distributor");
     }
 
+    @Override
     public void distributeData(List<T> allItems,
                                DataPartitioner<T> partitioner,
                                RemoteSourceLoader<T> sourceLoader,
                                RemoteTargetWriter<T> targetWriter,
+                               String workspacePath,
                                double[] customProportions)
     {
-        List<Member> memebers = new ArrayList<>(hazelcastInstance.getCluster().getMembers());
-        int numNodes = memebers.size();
+        List<Member> members = new ArrayList<>(hazelcastInstance.getCluster().getMembers());
+        int numNodes = members.size();
 
         if(numNodes == 0){
             throw new IllegalStateException("Error: No active Hazelcast members found in the cluster");
         }
 
-        double[] proportions = customProportions;
-        if (proportions == null){
-            proportions = new double[numNodes];
-            for (int i = 0; i < numNodes; i++) {
-                proportions[i] = 1.0 / numNodes;
-            }
-        }
-
+        double[] proportions = resolveProportions(numNodes, customProportions);
         List<List<T>> distributedChunks = partitioner.partition(allItems, proportions);
 
-        System.out.println("Initializing distributed lazy streaming via Hazelcast");
+        System.out.println("Phase 1: Cleanup of workspace across all cluster nodes");
+        executeCleanup(members, workspacePath);
 
+        System.out.println("Phase 2: Initializing distributed lazy streaming via Hazelcast");
+        executeStreaming(numNodes, members, distributedChunks, sourceLoader, targetWriter);
+
+        System.out.println("Data distribution across the entire cluster has been successfully completed");
+    }
+
+    private double[] resolveProportions(int numNodes, double[] customProportions){
+        if (customProportions != null){
+            return customProportions;
+        }
+
+        double[] proportions = new double[numNodes];
+        Arrays.fill(proportions, 1.0 / numNodes);
+
+        return proportions;
+    }
+
+    private void executeCleanup(List<Member> members, String workspacePath){
+        RemoteWorkspaceCleanupTask cleanupTask = new RemoteWorkspaceCleanupTask(workspacePath);
+
+        try{
+            Map<String, List<Member>> membersByHost = members.stream()
+                    .collect(Collectors.groupingBy(member -> member.getAddress().getHost()));
+
+            List<Future<Void>> cleanupFutures = new ArrayList<>();
+            for(Map.Entry<String, List<Member>> entry : membersByHost.entrySet()){
+                String host = entry.getKey();
+
+                Member leaderForHost = entry.getValue().get(0);
+
+                System.out.println("Delegating cleanup for host " + host + " to node " + leaderForHost.getUuid());
+
+                Future<Void> future = executorService.submitToMember(cleanupTask, leaderForHost);
+                cleanupFutures.add(future);
+            }
+
+            for(Future<Void> future : cleanupFutures){
+                future.get();
+            }
+
+            System.out.println("Workspace has been completely sanitised");
+        }
+        catch (Exception e){
+            System.err.println("Critical Error during cluster cleanup: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void executeStreaming(
+            int numNodes,
+            List<Member> members,
+            List<List<T>> distributedChunks,
+            RemoteSourceLoader<T> sourceLoader,
+            RemoteTargetWriter<T> targetWriter
+    )
+    {
         for (int i = 0; i < numNodes; i++) {
-            Member targetMember = memebers.get(i);
+            Member targetMember = members.get(i);
             List<T> nodeChunk = distributedChunks.get(i);
+
+            String nodeId = "node-" + (i + 1);
 
             System.out.println("Sending a batch of metadata ( " + nodeChunk.size() + " elements) to Node: " + targetMember.getUuid());
 
             for(T metadata : nodeChunk){
                 byte[] fileContent = sourceLoader.loadContent(metadata);
 
-                RemoteWriteTask<T> writeTask = new RemoteWriteTask<>(metadata, fileContent, targetWriter);
+                RemoteWriteTask<T> writeTask = new RemoteWriteTask<>(metadata, fileContent, targetWriter, nodeId);
 
                 try{
                     Future<?> networkFuture = executorService.submitToMember(writeTask, targetMember);
@@ -68,7 +126,5 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
                 }
             }
         }
-
-        System.out.println("Data distribution across the entire cluster has been successfully completed");
     }
 }
