@@ -12,6 +12,7 @@ public interface ClusterDataDistributor<T> {
         DataPartitioner<T> partitioner,
         RemoteSourceLoader<T> sourceLoader,
         RemoteTargetWriter<T> targetWriter,
+        String workspacePath,
         double[] customProportions
     );
 }
