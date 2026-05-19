@@ -13,17 +13,19 @@ public class RemoteWriteTask<T> implements Callable<Void>, Serializable {
     private final T metadata;
     private final byte[] content;
     private final RemoteTargetWriter<T> targetWriter;
+    private final String targetNodeId;
 
 
-    public RemoteWriteTask(T metadata, byte[] content, RemoteTargetWriter<T> targetWriter) {
+    public RemoteWriteTask(T metadata, byte[] content, RemoteTargetWriter<T> targetWriter, String targetNodeId) {
         this.metadata = metadata;
         this.content = content;
         this.targetWriter = targetWriter;
+        this.targetNodeId = targetNodeId;
     }
 
     @Override
     public Void call(){
-        targetWriter.writeToDisk(metadata, content);
+        targetWriter.writeToDisk(metadata, content, targetNodeId);
         return null;
     }
 }
