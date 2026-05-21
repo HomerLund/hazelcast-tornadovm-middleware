@@ -7,6 +7,7 @@ import kpi.diploma.middleware.client.orchestration.ClusterDataDistributor;
 import kpi.diploma.middleware.core.data.distribution.DataPartitioner;
 import kpi.diploma.middleware.core.data.io.RemoteSourceLoader;
 import kpi.diploma.middleware.core.data.io.RemoteTargetWriter;
+import kpi.diploma.middleware.core.network.MiddlewareConstants;
 import kpi.diploma.middleware.core.network.RemoteWorkspaceCleanupTask;
 import kpi.diploma.middleware.core.network.RemoteWriteTask;
 
@@ -23,7 +24,7 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
 
     public HazelcastDataDistributor(HazelcastInstance hazelcastInstance){
         this.hazelcastInstance = hazelcastInstance;
-        this.executorService = hazelcastInstance.getExecutorService("cluster-io-distributor");
+        this.executorService = hazelcastInstance.getExecutorService(MiddlewareConstants.SYSTEM_POOL_NAME);
     }
 
     @Override
