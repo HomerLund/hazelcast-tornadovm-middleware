@@ -1,4 +1,4 @@
-package kpi.diploma.middleware.client.hazelcast.orchestration;
+package kpi.diploma.middleware.client.hazelcast.orchestration.distribution;
 
 import com.hazelcast.cluster.Member;
 import com.hazelcast.core.HazelcastInstance;
@@ -28,8 +28,23 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
     @Override
     public void distributeData(DistributionJob<T> job){
         Objects.requireNonNull(job, "Distribution job can not be null");
-        Objects.requireNonNull(job.ge)
+        Objects.requireNonNull(job.getAllItems(), "Items list can not be null");
+        Objects.requireNonNull(job.getPartitioner(), "Partitioner can not be null");
+        Objects.requireNonNull(job.getSourceLoader(), "Source Loader can not be null");
+        Objects.requireNonNull(job.getTargetWriter(), "Target Writer can not be null");
+        Objects.requireNonNull(job.getWorkspacePath(), "Workspace path can not be null");
 
+        if (job.getAllItems().isEmpty()){
+            System.out.println("[Distributor] Warning: The dataset is empty. Nothing to distribute");
+            return;
+        }
+
+        List<T> allItems = job.getAllItems();
+        DataPartitioner<T> partitioner = job.getPartitioner();
+        RemoteSourceLoader<T> sourceLoader = job.getSourceLoader();
+        RemoteTargetWriter<T> targetWriter = job.getTargetWriter();
+        String workspacePath = job.getWorkspacePath();
+        double[] customProportions = job.getCustomProportions();
 
         List<Member> members = new ArrayList<>(hazelcastInstance.getCluster().getMembers());
         int numNodes = members.size();
