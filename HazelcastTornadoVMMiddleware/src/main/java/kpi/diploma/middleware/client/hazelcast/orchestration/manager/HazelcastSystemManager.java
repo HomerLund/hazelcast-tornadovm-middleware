@@ -2,7 +2,7 @@ package kpi.diploma.middleware.client.hazelcast.orchestration;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IExecutorService;
-import kpi.diploma.middleware.client.orchestration.ClusterSystemManager;
+import kpi.diploma.middleware.client.orchestration.manager.ClusterSystemManager;
 import kpi.diploma.middleware.core.network.MiddlewareConstants;
 import kpi.diploma.middleware.core.network.tasks.system.RemoteShutdownTask;
 

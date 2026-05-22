@@ -3,7 +3,8 @@ package kpi.diploma.middleware.client.hazelcast.orchestration;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IExecutorService;
-import kpi.diploma.middleware.client.orchestration.ClusterDataDistributor;
+import kpi.diploma.middleware.client.orchestration.distribution.ClusterDataDistributor;
+import kpi.diploma.middleware.client.orchestration.distribution.DistributionJob;
 import kpi.diploma.middleware.core.data.distribution.DataPartitioner;
 import kpi.diploma.middleware.core.data.io.RemoteSourceLoader;
 import kpi.diploma.middleware.core.data.io.RemoteTargetWriter;
@@ -11,10 +12,7 @@ import kpi.diploma.middleware.core.network.MiddlewareConstants;
 import kpi.diploma.middleware.core.network.RemoteWorkspaceCleanupTask;
 import kpi.diploma.middleware.core.network.RemoteWriteTask;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -28,13 +26,11 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
     }
 
     @Override
-    public void distributeData(List<T> allItems,
-                               DataPartitioner<T> partitioner,
-                               RemoteSourceLoader<T> sourceLoader,
-                               RemoteTargetWriter<T> targetWriter,
-                               String workspacePath,
-                               double[] customProportions)
-    {
+    public void distributeData(DistributionJob<T> job){
+        Objects.requireNonNull(job, "Distribution job can not be null");
+        Objects.requireNonNull(job.ge)
+
+
         List<Member> members = new ArrayList<>(hazelcastInstance.getCluster().getMembers());
         int numNodes = members.size();
 
