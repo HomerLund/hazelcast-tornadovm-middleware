@@ -27,8 +27,14 @@ public class HazelcastConnection {
                 }
             }
 
-            clientInstance = HazelcastClient.newHazelcastClient(clientConfig);
-            System.out.println("[Connection] Successfully established session with cluster: " + clusterName);
+            try {
+                clientInstance = HazelcastClient.newHazelcastClient(clientConfig);
+                System.out.println("[Connection] Successfully established session with cluster: " + clusterName);
+            }
+            catch (Exception e){
+                System.err.println("[Connection] Error: Failed to connect to the cluster: " + e.getMessage());
+                throw new RuntimeException("Cluster connection failed", e);
+            }
 
         }
         else{
