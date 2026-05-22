@@ -15,6 +15,7 @@ import java.util.List;
 
 public class RunMenu {
     public static void main(String[] args){
+        System.setProperty("hazelcast.logging.type", "none");
         String hazelcastConfigFilePath = Paths.get("userprojects", "facerecognition", "assets", "config", "hazelcast.properties").toString();
 
 
