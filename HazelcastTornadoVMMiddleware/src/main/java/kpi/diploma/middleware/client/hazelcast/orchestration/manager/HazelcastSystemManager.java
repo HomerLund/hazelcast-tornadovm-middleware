@@ -1,4 +1,4 @@
-package kpi.diploma.middleware.client.hazelcast.orchestration;
+package kpi.diploma.middleware.client.hazelcast.orchestration.manager;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IExecutorService;
