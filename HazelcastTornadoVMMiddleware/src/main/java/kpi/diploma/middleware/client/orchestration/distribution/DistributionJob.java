@@ -30,7 +30,7 @@ public class DistributionJob<T> {
     public String getWorkspacePath() {return workspacePath;}
     public double[] getCustomProportions() {return customProportions;}
 
-    private static class Builder<T>{
+    public static class Builder<T>{
         private List<T> allItems;
         private DataPartitioner<T> partitioner;
         private RemoteSourceLoader<T> sourceLoader;
