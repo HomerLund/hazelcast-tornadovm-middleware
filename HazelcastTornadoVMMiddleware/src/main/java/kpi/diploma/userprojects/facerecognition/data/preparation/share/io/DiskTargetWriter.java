@@ -9,23 +9,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class DiskTargetWriter implements RemoteTargetWriter<DatasetItem> {
-    private final String sourceSubPath;
     private final String targetBaseDirectory;
 
-
-    public DiskTargetWriter(String sourceSubPath, String targetBaseDirectory) {
-        this.sourceSubPath = sourceSubPath;
+    public DiskTargetWriter(String targetBaseDirectory) {
         this.targetBaseDirectory = targetBaseDirectory;
     }
 
     @Override
     public void writeToDisk(DatasetItem metadata, byte[] content, String workerNodeId) {
         try{
-            String originalPath = metadata.filePath();
-            String newSubPath = Paths.get(targetBaseDirectory, workerNodeId).toString();
-
-            String modifiedPath = originalPath.replace(sourceSubPath, newSubPath);
-            Path finalTargetPath = Paths.get(modifiedPath);
+            String relativePath = metadata.getRelativeSavePath();
+            Path finalTargetPath = Paths.get(targetBaseDirectory, workerNodeId, relativePath);
 
             Files.createDirectories(finalTargetPath.getParent());
             Files.write(finalTargetPath, content);
