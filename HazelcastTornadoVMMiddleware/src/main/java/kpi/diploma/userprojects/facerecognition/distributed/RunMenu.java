@@ -3,6 +3,7 @@ package kpi.diploma.userprojects.facerecognition.distributed;
 import kpi.diploma.middleware.client.api.context.ClusterContext;
 import kpi.diploma.middleware.client.hazelcast.HazelcastClusterProvider;
 import kpi.diploma.middleware.client.orchestration.distribution.DistributionJob;
+import kpi.diploma.middleware.core.logging.Logger;
 import kpi.diploma.middleware.view.menu.builders.ResearchConsoleBuilder;
 import kpi.diploma.userprojects.facerecognition.data.preparation.share.ImageDatasetPartitioner;
 import kpi.diploma.userprojects.facerecognition.data.preparation.share.io.DiskImageSourceLoader;
@@ -26,28 +27,32 @@ public class RunMenu {
             DatasetSplitReader reader = new DatasetSplitReader(datasetPath, extensions);
             List<DatasetItem> allItems = reader.readDataset();
 
-            String sourceSubPath = Paths.get("data", "prepared").toString();
+            String targetDirectoryPath = Paths.get("userprojects", "facerecognition", "assets",
+                    "dataset", "workspace").toString();
 
             DistributionJob<DatasetItem> distributionJob =
                     new DistributionJob.Builder<DatasetItem>()
                             .items(allItems)
                             .partitioner(new ImageDatasetPartitioner())
                             .loader(new DiskImageSourceLoader())
-                            .writer(new DiskTargetWriter(sourceSubPath, "workspace"))
+                            .writer(new DiskTargetWriter(targetDirectoryPath))
+                            .workspace(targetDirectoryPath)
                             .build();
 
 
             ResearchConsoleBuilder.create("Face Recognition Research")
-                    .addStandardTask("Distribute Face Dataset to Workers", () -> {
+                    .addBenchmarkTask("Distribute Face Dataset to Workers", () -> {
                         context.<DatasetItem>getDataDistributor().distributeData(distributionJob);
                     })
-                    .addStandardTask("Set Shut Down Signal to Cluser",  () -> {
+                    .addStandardTask("Set Shut Down Signal to Cluster",  () -> {
                         context.getSystemManager().shutdownAllWorkersNode();
+                        Logger.info("System", "Cluster is down. Terminating client application");
+                        System.exit(0);
                     })
                     .start();
         }
         catch (Exception e){
-            e.printStackTrace();
+            Logger.error("Client", "Error: " + e.getMessage());
         }
     }
 }
