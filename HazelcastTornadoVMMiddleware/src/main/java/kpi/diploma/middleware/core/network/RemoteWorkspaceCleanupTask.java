@@ -1,5 +1,7 @@
 package kpi.diploma.middleware.core.network;
 
+import kpi.diploma.middleware.core.logging.Logger;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.nio.file.Files;
@@ -20,7 +22,15 @@ public class RemoteWorkspaceCleanupTask implements Callable<Void>, Serializable 
 
     @Override
     public Void call() {
+        Logger.info("Cleanup", "Initializing cleanup task");
+
         Path workspace = Paths.get(workspacePath);
+        Path fileName = workspace.getFileName();
+
+        if (fileName == null || !fileName.toString().equals(MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME)){
+            throw new SecurityException("Critical Security Error: Attempt to delete a non-target directory"
+                    + "Expected leaf directory to be '" + MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME + "', but got:" + workspace);
+        }
 
         if (!Files.exists(workspace)){
             return null;
@@ -33,15 +43,17 @@ public class RemoteWorkspaceCleanupTask implements Callable<Void>, Serializable 
                         try {
                             Files.deleteIfExists(path);
                         }
-                        catch (Exception ignored){
-
+                        catch (Exception e){
+                            throw new RuntimeException("Failed to delete path: " + path, e);
                         }
 
                     });
         }
-        catch (Exception ignored){
-
+        catch (Exception e){
+            throw new RuntimeException("Failed to complete workspace cleanup", e);
         }
+
+        Logger.info("Cleanup", "Workspace has been completely sanitised");
 
         return null;
     }
