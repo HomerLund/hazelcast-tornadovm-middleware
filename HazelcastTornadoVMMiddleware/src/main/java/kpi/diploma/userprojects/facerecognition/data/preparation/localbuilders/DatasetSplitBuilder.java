@@ -79,7 +79,7 @@ public class DatasetSplitBuilder implements Serializable {
 
         if (fileName == null || !fileName.toString().equals(MAIN_FOLDER)){
             throw new SecurityException("Critical Security Error: Attempt to delete a non-target directory"
-                    + "Excepted leaf directory to be '" + MAIN_FOLDER + "', but got:" + basePath);
+                    + "Expected leaf directory to be '" + MAIN_FOLDER + "', but got:" + basePath);
         }
 
         if (Files.exists(basePath)){
