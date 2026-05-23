@@ -11,6 +11,6 @@ public record DatasetItem(
     public String getRelativeSavePath(){
         String fileName = Paths.get(filePath).getFileName().toString();
         String splitFolder = isTrain ? "train" : "test";
-        return  Paths.get(splitFolder, fileName).toString();
+        return  Paths.get(splitFolder, label, fileName).toString();
     }
 }
