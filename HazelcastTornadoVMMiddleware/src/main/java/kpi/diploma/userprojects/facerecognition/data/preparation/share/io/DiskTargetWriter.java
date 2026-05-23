@@ -16,15 +16,18 @@ public class DiskTargetWriter implements RemoteTargetWriter<DatasetItem> {
     }
 
     @Override
-    public void writeToDisk(DatasetItem metadata, byte[] content, String workerNodeId) {
+    public void writeToDisk(DatasetItem metadata, byte[] content, String workspaceNodePath) {
         try{
             String relativePath = metadata.getRelativeSavePath();
-            Path finalTargetPath = Paths.get(targetBaseDirectory, workerNodeId, relativePath);
+            Path finalTargetPath = Paths.get(targetBaseDirectory, workspaceNodePath, relativePath);
 
             Files.createDirectories(finalTargetPath.getParent());
             Files.write(finalTargetPath, content);
+
+            System.out.println("Write file '" + finalTargetPath.getFileName() + "' to disk");
+            System.out.println("File path: " + finalTargetPath);
         } catch (IOException e) {
-            throw new RuntimeException("Error: Failed to write streamed file to specific node with id: " + workerNodeId + ": ", e);
+            throw new RuntimeException("Error: Failed to write streamed file to specific node: ", e);
         }
     }
 }
