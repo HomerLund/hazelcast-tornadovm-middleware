@@ -12,6 +12,8 @@ import kpi.diploma.middleware.core.network.MiddlewareConstants;
 import kpi.diploma.middleware.core.network.RemoteWorkspaceCleanupTask;
 import kpi.diploma.middleware.core.network.RemoteWriteTask;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
     private final HazelcastInstance hazelcastInstance;
     private final IExecutorService executorService;
+    private final String BASE_FOLDER = "nodes";
 
     public HazelcastDataDistributor(HazelcastInstance hazelcastInstance){
         this.hazelcastInstance = hazelcastInstance;
@@ -43,7 +46,7 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
         DataPartitioner<T> partitioner = job.getPartitioner();
         RemoteSourceLoader<T> sourceLoader = job.getSourceLoader();
         RemoteTargetWriter<T> targetWriter = job.getTargetWriter();
-        String workspacePath = job.getWorkspacePath();
+        String workspacePath = Paths.get(job.getWorkspacePath(), BASE_FOLDER).toString();
         double[] customProportions = job.getCustomProportions();
 
         List<Member> members = new ArrayList<>(hazelcastInstance.getCluster().getMembers());
@@ -77,6 +80,14 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
     }
 
     private void executeCleanup(List<Member> members, String workspacePath){
+        Path basePath = Paths.get(workspacePath);
+        Path fileName = basePath.getFileName();
+
+        if (fileName == null || !fileName.toString().equals(BASE_FOLDER)){
+            throw new SecurityException("Critical Security Error: Attempt to delete a non-target directory"
+                    + "Excepted leaf directory to be '" + BASE_FOLDER + "', but got:" + basePath);
+        }
+
         RemoteWorkspaceCleanupTask cleanupTask = new RemoteWorkspaceCleanupTask(workspacePath);
 
         try{
