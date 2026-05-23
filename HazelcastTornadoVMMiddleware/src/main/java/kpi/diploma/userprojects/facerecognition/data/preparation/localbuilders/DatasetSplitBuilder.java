@@ -17,7 +17,7 @@ public class DatasetSplitBuilder implements Serializable {
     private final double trainingRatio;
     private final String keyFaceWord;
     private final String baseTargetFolderPath;
-    private final String mainFolder = "prepared";
+    private final String MAIN_FOLDER = "prepared";
 
     private final List<String> subPaths = List.of(
             "train/face", "train/nonface",
@@ -28,7 +28,7 @@ public class DatasetSplitBuilder implements Serializable {
         this.dataReader = dataReader;
         this.trainingRatio = trainingRatio;
         this.keyFaceWord = keyFaceWord;
-        this.baseTargetFolderPath = Paths.get(baseTargetFolderPath, mainFolder).toString();
+        this.baseTargetFolderPath = Paths.get(baseTargetFolderPath, MAIN_FOLDER).toString();
     }
 
     public void buildDatasetStructure(){
@@ -75,9 +75,11 @@ public class DatasetSplitBuilder implements Serializable {
 
     private void cleanOldData(){
         Path basePath = Paths.get(baseTargetFolderPath);
+        Path fileName = basePath.getFileName();
 
-        if (!basePath.getFileName().toString().equals(mainFolder)){
-            throw new SecurityException("Critical Error: Attempt to delete a non-target directory!");
+        if (fileName == null || !fileName.toString().equals(MAIN_FOLDER)){
+            throw new SecurityException("Critical Security Error: Attempt to delete a non-target directory"
+                    + "Excepted leaf directory to be '" + MAIN_FOLDER + "', but got:" + basePath);
         }
 
         if (Files.exists(basePath)){
