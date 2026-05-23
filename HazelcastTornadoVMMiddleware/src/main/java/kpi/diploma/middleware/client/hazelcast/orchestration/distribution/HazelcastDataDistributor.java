@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
     private final HazelcastInstance hazelcastInstance;
     private final IExecutorService executorService;
-    private final String BASE_FOLDER = "nodes";
 
     public HazelcastDataDistributor(HazelcastInstance hazelcastInstance){
         this.hazelcastInstance = hazelcastInstance;
@@ -46,7 +45,7 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
         DataPartitioner<T> partitioner = job.getPartitioner();
         RemoteSourceLoader<T> sourceLoader = job.getSourceLoader();
         RemoteTargetWriter<T> targetWriter = job.getTargetWriter();
-        String workspacePath = Paths.get(job.getWorkspacePath(), BASE_FOLDER).toString();
+        String workspacePath = Paths.get(job.getWorkspacePath(), MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME).normalize().toString();
         double[] customProportions = job.getCustomProportions();
 
         List<Member> members = new ArrayList<>(hazelcastInstance.getCluster().getMembers());
@@ -83,9 +82,9 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
         Path basePath = Paths.get(workspacePath);
         Path fileName = basePath.getFileName();
 
-        if (fileName == null || !fileName.toString().equals(BASE_FOLDER)){
+        if (fileName == null || !fileName.toString().equals(MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME)){
             throw new SecurityException("Critical Security Error: Attempt to delete a non-target directory"
-                    + "Excepted leaf directory to be '" + BASE_FOLDER + "', but got:" + basePath);
+                    + "Expected leaf directory to be '" + MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME + "', but got:" + basePath);
         }
 
         RemoteWorkspaceCleanupTask cleanupTask = new RemoteWorkspaceCleanupTask(workspacePath);
@@ -131,13 +130,14 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
             List<T> nodeChunk = distributedChunks.get(i);
 
             String nodeId = "node-" + (i + 1);
+            String workspaceNodePath = Paths.get(MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME, nodeId).toString();
 
             System.out.println("Sending a batch of metadata ( " + nodeChunk.size() + " elements) to Node: " + targetMember.getUuid());
 
             for(T metadata : nodeChunk){
                 byte[] fileContent = sourceLoader.loadContent(metadata);
 
-                RemoteWriteTask<T> writeTask = new RemoteWriteTask<>(metadata, fileContent, targetWriter, nodeId);
+                RemoteWriteTask<T> writeTask = new RemoteWriteTask<>(metadata, fileContent, targetWriter, workspaceNodePath);
 
                 try{
                     Future<?> networkFuture = executorService.submitToMember(writeTask, targetMember);
