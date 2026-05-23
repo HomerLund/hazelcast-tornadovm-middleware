@@ -17,10 +17,10 @@ public class ImageDatasetPartitioner implements DataPartitioner<DatasetItem> {
             nodeChunks.add(new ArrayList<>());
         }
 
-        Map<String, List<DatasetItem>> itemsByLabel = items.stream()
-                .collect(Collectors.groupingBy(DatasetItem::label));
+        Map<String, List<DatasetItem>> itemsByGroup = items.stream()
+                .collect(Collectors.groupingBy(item -> item.isTrain() + "_" + item.label()));
 
-        for (Map.Entry<String, List<DatasetItem>> entry : itemsByLabel.entrySet()){
+        for (Map.Entry<String, List<DatasetItem>> entry : itemsByGroup.entrySet()){
             List<DatasetItem> labelGroup = entry.getValue();
 
             int totalInGroup = labelGroup.size();
