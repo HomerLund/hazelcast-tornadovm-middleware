@@ -99,7 +99,7 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
 
                 Member leaderForHost = entry.getValue().get(0);
 
-                System.out.println("Delegating cleanup for host " + host + " to node " + leaderForHost.getUuid());
+                System.out.println("Delegating cleanup for host " + host + " to node " + leaderForHost.getAddress());
 
                 Future<Void> future = executorService.submitToMember(cleanupTask, leaderForHost);
                 cleanupFutures.add(future);
@@ -129,10 +129,14 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
             Member targetMember = members.get(i);
             List<T> nodeChunk = distributedChunks.get(i);
 
-            String nodeId = "node-" + (i + 1);
-            String workspaceNodePath = Paths.get(MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME, nodeId).toString();
+            String host = targetMember.getAddress().getHost();
+            int port = targetMember.getAddress().getPort();
 
-            System.out.println("Sending a batch of metadata ( " + nodeChunk.size() + " elements) to Node: " + targetMember.getUuid());
+            String nodeName = "node-" + host.replace(".", "-") + "_" + port;
+
+            String workspaceNodePath = Paths.get(MiddlewareConstants.SYSTEM_SANDBOX_FOLDER_NAME, nodeName).toString();
+
+            System.out.println("Sending a batch of metadata ( " + nodeChunk.size() + " elements) to Node: " + targetMember.getAddress());
 
             for(T metadata : nodeChunk){
                 byte[] fileContent = sourceLoader.loadContent(metadata);
@@ -145,7 +149,7 @@ public class HazelcastDataDistributor<T> implements ClusterDataDistributor<T> {
                     networkFuture.get();
                 }
                 catch (Exception e){
-                    System.err.println("Error deploying an element to a " + targetMember.getUuid() + " node: " + e.getMessage());
+                    System.err.println("Error deploying an element to a " + targetMember.getAddress() + " node: " + e.getMessage());
                 }
             }
         }
