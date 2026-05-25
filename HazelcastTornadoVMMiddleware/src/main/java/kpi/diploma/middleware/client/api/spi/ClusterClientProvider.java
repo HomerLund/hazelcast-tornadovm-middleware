@@ -1,5 +1,6 @@
 package kpi.diploma.middleware.client.api.spi;
 
+import kpi.diploma.middleware.client.orchestration.compute.ClusterComputeManager;
 import kpi.diploma.middleware.client.orchestration.distribution.ClusterDataDistributor;
 import kpi.diploma.middleware.client.orchestration.manager.ClusterSystemManager;
 
@@ -10,6 +11,7 @@ public interface ClusterClientProvider {
 
     ClusterSystemManager createSystemManager();
     ClusterDataDistributor<?> createDataDistributor();
+    ClusterComputeManager createComputeManager();
 
     void disconnect();
 }
