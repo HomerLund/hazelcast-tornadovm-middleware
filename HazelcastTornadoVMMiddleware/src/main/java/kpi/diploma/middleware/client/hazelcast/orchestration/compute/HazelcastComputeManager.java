@@ -33,7 +33,7 @@ public class HazelcastComputeManager implements ClusterComputeManager {
 
             for (Map.Entry<Member, Future<Void>> entry: futures.entrySet()){
                 entry.getValue().get();
-                Logger.info("ComputeManager", "Node " + entry.getKey().getUuid() + "Successfully completed the task");
+                Logger.info("ComputeManager", "Node " + entry.getKey().getAddress() + " Successfully completed the task");
             }
             Logger.info("ComputeManager", "Global cluster execution completed");
 
