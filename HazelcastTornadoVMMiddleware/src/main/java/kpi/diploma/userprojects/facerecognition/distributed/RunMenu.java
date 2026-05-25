@@ -1,7 +1,9 @@
 package kpi.diploma.userprojects.facerecognition.distributed;
 
+import kpi.diploma.middleware.client.api.compute.ComputeJobBuilder;
 import kpi.diploma.middleware.client.api.context.ClusterContext;
 import kpi.diploma.middleware.client.hazelcast.HazelcastClusterProvider;
+import kpi.diploma.middleware.client.orchestration.compute.ComputeJob;
 import kpi.diploma.middleware.client.orchestration.distribution.DistributionJob;
 import kpi.diploma.middleware.core.logging.Logger;
 import kpi.diploma.middleware.view.menu.builders.ResearchConsoleBuilder;
@@ -19,40 +21,83 @@ public class RunMenu {
         System.setProperty("hazelcast.logging.type", "none");
         String hazelcastConfigFilePath = Paths.get("userprojects", "facerecognition", "assets", "config", "hazelcast.properties").toString();
 
-
         try (ClusterContext context = ClusterContext.create(new HazelcastClusterProvider(), hazelcastConfigFilePath)){
-            String datasetPath = Paths.get("userprojects", "facerecognition", "assets",
-                    "dataset", "data", "prepared").toString();
-            List<String> extensions = List.of(".jpg", ".jpeg", ".png", ".bmp");
-            DatasetSplitReader reader = new DatasetSplitReader(datasetPath, extensions);
-            List<DatasetItem> allItems = reader.readDataset();
-
             String targetDirectoryPath = Paths.get("userprojects", "facerecognition", "assets",
                     "dataset", "workspace").toString();
-
-            DistributionJob<DatasetItem> distributionJob =
-                    new DistributionJob.Builder<DatasetItem>()
-                            .items(allItems)
-                            .partitioner(new ImageDatasetPartitioner())
-                            .loader(new DiskImageSourceLoader())
-                            .writer(new DiskTargetWriter(targetDirectoryPath))
-                            .workspace(targetDirectoryPath)
-                            .build();
-
+            List<String> extensions = List.of(".jpg", ".jpeg", ".png", ".bmp");
 
             ResearchConsoleBuilder.create("Face Recognition Research")
-                    .addBenchmarkTask("Distribute Face Dataset to Workers", () -> {
-                        context.<DatasetItem>getDataDistributor().distributeData(distributionJob);
-                    })
-                    .addStandardTask("Set Shut Down Signal to Cluster",  () -> {
-                        context.getSystemManager().shutdownAllWorkersNode();
-                        Logger.info("System", "Cluster is down. Terminating client application");
-                        System.exit(0);
-                    })
+                    .addBenchmarkTask(
+                            "Distribute Face Dataset to Workers",
+                            () -> {
+                                distributeData(context, targetDirectoryPath, extensions);
+                            })
+                    .addBenchmarkTask(
+                            "Initialise Node Caches (Phase 1 Setup)",
+                            () -> {
+                                initNodeCache(context, targetDirectoryPath, extensions);
+                            })
+                    .addStandardTask(
+                            "Set Shut Down Signal to Cluster",
+                            () -> {
+                                shutdownCluster(context);
+                            })
                     .start();
         }
         catch (Exception e){
             Logger.error("Client", "Error: " + e.getMessage());
         }
     }
+
+    public static void distributeData(ClusterContext context, String targetDirectoryPath, List<String> extensions){
+        String datasetPath = Paths.get("userprojects", "facerecognition", "assets",
+                "dataset", "data", "prepared").toString();
+        DatasetSplitReader reader = new DatasetSplitReader(datasetPath, extensions);
+        List<DatasetItem> allItems = reader.readDataset();
+
+        DistributionJob<DatasetItem> distributionJob =
+                new DistributionJob.Builder<DatasetItem>()
+                        .items(allItems)
+                        .partitioner(new ImageDatasetPartitioner())
+                        .loader(new DiskImageSourceLoader())
+                        .writer(new DiskTargetWriter(targetDirectoryPath))
+                        .workspace(targetDirectoryPath)
+                        .build();
+
+        context.<DatasetItem>getDataDistributor().distributeData(distributionJob);
+    }
+
+    public static void initNodeCache(ClusterContext context, String targetDirectoryPath, List<String> extensions){
+        ComputeJob<Void> setupTrainJob = ComputeJobBuilder.<Void, List<DatasetItem>>create()
+                .routeTo("cpu-engine")
+                .userMethod(input -> {
+                    DatasetSplitReader nodeReader = new DatasetSplitReader(targetDirectoryPath, extensions);
+                    return nodeReader.readDataset().stream().filter(DatasetItem::isTrain).toList();
+                })
+                .saveToNodeCache("trainItems")
+                .buildSetupJob();
+
+        ComputeJob<Void> setupTestJob = ComputeJobBuilder.<Void, List<DatasetItem>>create()
+                .routeTo("cpu-engine")
+                .userMethod(input -> {
+                    DatasetSplitReader nodeReader = new DatasetSplitReader(targetDirectoryPath, extensions);
+                    return nodeReader.readDataset().stream().filter(item -> !item.isTrain()).toList();
+                })
+                .saveToNodeCache("testItems")
+                .buildSetupJob();
+
+        context.getComputeManager().executeOnAllNodes(setupTrainJob);
+        context.getComputeManager().executeOnAllNodes(setupTestJob);
+
+        Logger.info("Cache", "Train and Test items successfully cached on all nodes");
+
+    }
+
+    public static void shutdownCluster(ClusterContext context){
+        context.getSystemManager().shutdownAllWorkersNode();
+        Logger.info("System", "Cluster is down. Terminating client application");
+        System.exit(0);
+    }
+
+
 }
