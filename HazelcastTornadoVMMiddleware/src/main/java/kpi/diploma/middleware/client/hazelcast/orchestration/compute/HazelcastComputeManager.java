@@ -7,9 +7,8 @@ import kpi.diploma.middleware.client.orchestration.compute.ClusterComputeManager
 import kpi.diploma.middleware.client.orchestration.compute.ComputeJob;
 import kpi.diploma.middleware.core.logging.Logger;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
 public class HazelcastComputeManager implements ClusterComputeManager {
@@ -22,20 +21,39 @@ public class HazelcastComputeManager implements ClusterComputeManager {
     @Override
     public void executeOnAllNodes(ComputeJob<Void> job) {
         Objects.requireNonNull(job, "Compute job can not be null");
-        Objects.requireNonNull(job.getNetworkTask(), "Network task can not be null");
         Objects.requireNonNull(job.getTargetPoolName(), "Target pool name can not be null");
 
         IExecutorService executorService = hazelcastInstance.getExecutorService(job.getTargetPoolName());
         Logger.info("ComputeManager", "Deploying compute task to pool: [" + job.getTargetPoolName() + "]");
 
         try{
-            Map<Member, Future<Void>> futures = executorService.submitToAllMembers(job.getNetworkTask());
+            if (job.getTargetedTaskGenerator() != null){
+                List<Member> members = new ArrayList<>(hazelcastInstance.getCluster().getMembers());
+                int nodeCount = members.size();
 
-            for (Map.Entry<Member, Future<Void>> entry: futures.entrySet()){
-                entry.getValue().get();
-                Logger.info("ComputeManager", "Node " + entry.getKey().getAddress() + " Successfully completed the task");
+                List<Callable<Void>> targetedTasks = job.getTargetedTaskGenerator().apply(nodeCount);
+
+                List<Future<Void>> futures = new ArrayList<>();
+                for (int i = 0; i < nodeCount; i++) {
+                    Future<Void> future = executorService.submitToMember(targetedTasks.get(i), members.get(i));
+                    futures.add(future);
+                }
+
+                for (Future<Void> future : futures){
+                    future.get();
+                }
             }
-            Logger.info("ComputeManager", "Global cluster execution completed");
+            else {
+                Objects.requireNonNull(job.getNetworkTask(), "Network task can not be null");
+
+                Map<Member, Future<Void>> futures = executorService.submitToAllMembers(job.getNetworkTask());
+
+                for (Map.Entry<Member, Future<Void>> entry : futures.entrySet()) {
+                    entry.getValue().get();
+                    Logger.info("ComputeManager", "Node " + entry.getKey().getAddress() + " Successfully completed the task");
+                }
+                Logger.info("ComputeManager", "Global cluster execution completed");
+            }
 
 
         }
