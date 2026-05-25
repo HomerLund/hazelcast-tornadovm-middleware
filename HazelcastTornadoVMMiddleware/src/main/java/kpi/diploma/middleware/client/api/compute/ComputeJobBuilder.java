@@ -2,11 +2,22 @@ package kpi.diploma.middleware.client.api.compute;
 
 import kpi.diploma.middleware.client.orchestration.compute.ComputeJob;
 import kpi.diploma.middleware.core.function.SerializableFunction;
-import kpi.diploma.middleware.core.network.tasks.compute.RemoteSetupTask;
+import kpi.diploma.middleware.core.network.tasks.compute.RemoteDiskScanTask;
 
-import java.util.function.Function;
+import java.util.List;
 
 public class ComputeJobBuilder<I, O> {
+    public enum SourceStrategy{
+        WORKER_DISK,
+        CLIENT_RAM
+    }
+
+    private SourceStrategy sourceStrategy;
+
+    private String baseDiskDirectory;
+
+    private List<I> clientRamData;
+
     private String targetPoolName;
     private SerializableFunction<I, O> userLambda;
     private String cashKey;
@@ -15,6 +26,18 @@ public class ComputeJobBuilder<I, O> {
 
     public static <IN, OUT> ComputeJobBuilder<IN, OUT> create() {
         return new ComputeJobBuilder<>();
+    }
+
+    public ComputeJobBuilder<I, O> sourceFromWorkerDisks(String baseDiskDirectory){
+        this.sourceStrategy = SourceStrategy.WORKER_DISK;
+        this.baseDiskDirectory = baseDiskDirectory;
+        return this;
+    }
+
+    public ComputeJobBuilder<I, O> sourceFromClientRam(List<I> clientRamData){
+        this.sourceStrategy = SourceStrategy.CLIENT_RAM;
+        this.clientRamData = clientRamData;
+        return this;
     }
 
     public ComputeJobBuilder<I, O> routeTo(String poolName){
@@ -37,12 +60,20 @@ public class ComputeJobBuilder<I, O> {
             throw new IllegalStateException("Incomplete task setup");
         }
 
-        @SuppressWarnings("unchecked")
-        RemoteSetupTask<O> networkTask = new RemoteSetupTask<>((SerializableFunction<Void, O>) userLambda, cashKey);
-
-        return new ComputeJob.Builder<Void>()
-                .poolName(targetPoolName)
-                .task(networkTask)
-                .build();
+        switch (sourceStrategy){
+            case WORKER_DISK:
+                @SuppressWarnings("unchecked")
+                SerializableFunction<String, O> diskLambda = (SerializableFunction<String, O>) userLambda;
+                RemoteDiskScanTask<O> diskTask = new RemoteDiskScanTask<>(baseDiskDirectory, diskLambda, cashKey);
+                return new ComputeJob.Builder<Void>()
+                        .poolName(targetPoolName)
+                        .task(diskTask)
+                        .build();
+            default:
+                return new ComputeJob.Builder<Void>()
+                        .poolName(targetPoolName)
+                        .task(null)
+                        .build();
+        }
     }
 }
