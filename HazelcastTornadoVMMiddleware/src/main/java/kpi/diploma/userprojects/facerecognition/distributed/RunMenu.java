@@ -14,7 +14,9 @@ import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetSplitReader;
 
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public class RunMenu {
     public static void main(String[] args){
@@ -93,6 +95,36 @@ public class RunMenu {
 
         Logger.success("Cache", "Train and Test items successfully cached on all nodes");
 
+    }
+
+    public static void testNodeRamCache(ClusterContext context){
+        List<Integer> allNumbers = IntStream.rangeClosed(0, 1000).boxed().toList();
+
+        ComputeJob<Void> setupRamJob = ComputeJobBuilder.<Void, List<Integer>>create()
+                .sourceFromClientRam(n -> {
+                    Logger.info("RAM test", "Orchestrator passed the number of nodes: " + n);
+
+                    List<List<Integer>> partitions = new ArrayList<>();
+
+                    int chunkSize = (int) Math.ceil((double) allNumbers.size() / n);
+
+                    for (int i = 0; i < n; i++) {
+                        int fromIndex = i * chunkSize;
+                        int toIndex = Math.min(fromIndex + chunkSize, allNumbers.size());
+
+                        if (fromIndex >= allNumbers.size()) break;
+
+                        List<Integer> chunk = new ArrayList<>(allNumbers.subList(fromIndex, toIndex));
+                        partitions.add(chunk);
+                    }
+
+                    return partitions;
+                })
+                .routeTo("cpu-engine")
+                .saveToNodeCache("testNumbers")
+                .buildSetupJob();
+
+        context.getComputeManager().executeOnAllNodes(setupRamJob);
     }
 
     public static void shutdownCluster(ClusterContext context){
