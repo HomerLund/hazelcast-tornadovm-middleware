@@ -68,19 +68,21 @@ public class RunMenu {
     }
 
     public static void initNodeCache(ClusterContext context, String targetDirectoryPath, List<String> extensions){
-        ComputeJob<Void> setupTrainJob = ComputeJobBuilder.<Void, List<DatasetItem>>create()
+        ComputeJob<Void> setupTrainJob = ComputeJobBuilder.<String, List<DatasetItem>>create()
+                .sourceFromWorkerDisks(targetDirectoryPath)
                 .routeTo("cpu-engine")
-                .userMethod(input -> {
-                    DatasetSplitReader nodeReader = new DatasetSplitReader(targetDirectoryPath, extensions);
+                .userMethod(finalPath -> {
+                    DatasetSplitReader nodeReader = new DatasetSplitReader(finalPath, extensions);
                     return nodeReader.readDataset().stream().filter(DatasetItem::isTrain).toList();
                 })
                 .saveToNodeCache("trainItems")
                 .buildSetupJob();
 
-        ComputeJob<Void> setupTestJob = ComputeJobBuilder.<Void, List<DatasetItem>>create()
+        ComputeJob<Void> setupTestJob = ComputeJobBuilder.<String, List<DatasetItem>>create()
+                .sourceFromWorkerDisks(targetDirectoryPath)
                 .routeTo("cpu-engine")
-                .userMethod(input -> {
-                    DatasetSplitReader nodeReader = new DatasetSplitReader(targetDirectoryPath, extensions);
+                .userMethod(finalPath -> {
+                    DatasetSplitReader nodeReader = new DatasetSplitReader(finalPath, extensions);
                     return nodeReader.readDataset().stream().filter(item -> !item.isTrain()).toList();
                 })
                 .saveToNodeCache("testItems")
@@ -89,7 +91,7 @@ public class RunMenu {
         context.getComputeManager().executeOnAllNodes(setupTrainJob);
         context.getComputeManager().executeOnAllNodes(setupTestJob);
 
-        Logger.info("Cache", "Train and Test items successfully cached on all nodes");
+        Logger.success("Cache", "Train and Test items successfully cached on all nodes");
 
     }
 
