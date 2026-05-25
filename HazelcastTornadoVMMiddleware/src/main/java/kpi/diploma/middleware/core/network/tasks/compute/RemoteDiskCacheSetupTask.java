@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class RemoteDiskScanTask<O> implements Callable<Void>, Serializable, HazelcastInstanceAware {
+public class RemoteDiskCacheSetupTask<O> implements Callable<Void>, Serializable, HazelcastInstanceAware {
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -25,7 +25,7 @@ public class RemoteDiskScanTask<O> implements Callable<Void>, Serializable, Haze
 
     private transient HazelcastInstance hazelcastInstance;
 
-    public RemoteDiskScanTask(String baseDirectory, SerializableFunction<String, O> userLambda, String cashKey) {
+    public RemoteDiskCacheSetupTask(String baseDirectory, SerializableFunction<String, O> userLambda, String cashKey) {
         this.baseDirectory = baseDirectory;
         this.userLambda = userLambda;
         this.cashKey = cashKey;
