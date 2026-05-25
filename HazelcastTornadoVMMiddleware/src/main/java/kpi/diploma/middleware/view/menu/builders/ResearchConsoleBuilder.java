@@ -85,6 +85,6 @@ public class ResearchConsoleBuilder {
             item.action().run();
         }
 
-        Logger.info("Menu", "Finished task:" + item.name());
+        Logger.info("Menu", "Finished task: " + item.name());
     }
 }
