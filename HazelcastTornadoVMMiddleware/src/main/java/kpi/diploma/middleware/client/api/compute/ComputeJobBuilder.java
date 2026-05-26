@@ -2,8 +2,8 @@ package kpi.diploma.middleware.client.api.compute;
 
 import kpi.diploma.middleware.client.orchestration.compute.ComputeJob;
 import kpi.diploma.middleware.core.function.SerializableFunction;
-import kpi.diploma.middleware.core.network.tasks.compute.RemoteDiskCacheSetupTask;
-import kpi.diploma.middleware.core.network.tasks.compute.RemoteRamCacheSetupTask;
+import kpi.diploma.middleware.core.network.tasks.compute.cache.RemoteDiskCacheSetupTask;
+import kpi.diploma.middleware.core.network.tasks.compute.cache.RemoteRamCacheSetupTask;
 
 import java.util.List;
 import java.util.concurrent.Callable;
