@@ -1,6 +1,6 @@
 package kpi.diploma.middleware.client.api.compute;
 
-import kpi.diploma.middleware.client.orchestration.compute.ComputeJob;
+import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.core.function.SerializableConsumer;
 import kpi.diploma.middleware.core.function.SerializableFunction;
 import kpi.diploma.middleware.core.network.tasks.compute.pipeline.RemoteBatchTask;

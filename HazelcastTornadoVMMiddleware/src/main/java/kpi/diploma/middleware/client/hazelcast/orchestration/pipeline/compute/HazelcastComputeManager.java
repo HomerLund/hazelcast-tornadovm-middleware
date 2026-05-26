@@ -3,8 +3,8 @@ package kpi.diploma.middleware.client.hazelcast.orchestration.compute;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IExecutorService;
-import kpi.diploma.middleware.client.orchestration.compute.ClusterComputeManager;
-import kpi.diploma.middleware.client.orchestration.compute.ComputeJob;
+import kpi.diploma.middleware.client.orchestration.pipeline.compute.ClusterComputeManager;
+import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.core.logging.Logger;
 
 import java.util.*;
@@ -91,4 +91,40 @@ public class HazelcastComputeManager implements ClusterComputeManager {
 
         return results;
     }
+
+    @Override
+    public void executePipeline(List<ComputeJob<?>> pipeline) {
+        Objects.requireNonNull(pipeline, "Pipeline can not be null");
+        Logger.info("ComputeManager", "Deploying pipeline with " + pipeline.size() + " stages");
+
+        List<Future<?>> allFutures = new ArrayList<>();
+
+        try{
+            for (ComputeJob<?> job : pipeline){
+                Objects.requireNonNull(job.getNetworkTask(), "Network task can not be null");
+                Objects.requireNonNull(job.getTargetPoolName(), "Target pool name can not be null");
+
+                IExecutorService executorService = hazelcastInstance.getExecutorService(job.getTargetPoolName());
+                Logger.info("ComputeManager", "Starting stage in pool: [" + job.getTargetPoolName() + "]");
+
+                Map<Member, ? extends Future<?>> futures = executorService.submitToAllMembers(job.getNetworkTask());
+
+                allFutures.addAll(futures.values());
+            }
+
+            Logger.info("ComputeManager", "All pipeline stages deployed. Waiting for execution to complete...");
+
+            for (Future<?> future : allFutures){
+                future.get();
+            }
+
+            Logger.success("ComputeManager", "Pipeline execution successfully completed");
+        }
+        catch (Exception e){
+            Logger.error("ComputeManager", "Error during pipeline execution: " + e.getMessage());
+            throw new RuntimeException("Pipeline failed", e);
+        }
+    }
+
+
 }
