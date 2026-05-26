@@ -1,9 +1,10 @@
 package kpi.diploma.userprojects.facerecognition.distributed;
 
-import kpi.diploma.middleware.client.api.compute.ComputeJobBuilder;
+import kpi.diploma.middleware.client.api.pipeline.cashe.CacheJobBuilder;
 import kpi.diploma.middleware.client.api.context.ClusterContext;
 import kpi.diploma.middleware.client.hazelcast.HazelcastClusterProvider;
-import kpi.diploma.middleware.client.orchestration.compute.ComputeJob;
+import kpi.diploma.middleware.client.orchestration.pipeline.jobs.CacheJob;
+import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.client.orchestration.distribution.DistributionJob;
 import kpi.diploma.middleware.core.logging.Logger;
 import kpi.diploma.middleware.view.menu.builders.ResearchConsoleBuilder;
@@ -39,6 +40,11 @@ public class RunMenu {
                             () -> {
                                 initNodeCache(context, targetDirectoryPath, extensions);
                             })
+                    .addBenchmarkTask(
+                            "Ram test",
+                            () -> {
+                                testNodeRamCache(context);
+                            })
                     .addStandardTask(
                             "Set Shut Down Signal to Cluster",
                             () -> {
@@ -70,7 +76,7 @@ public class RunMenu {
     }
 
     public static void initNodeCache(ClusterContext context, String targetDirectoryPath, List<String> extensions){
-        ComputeJob<Void> setupTrainJob = ComputeJobBuilder.<String, List<DatasetItem>>create()
+        CacheJob setupTrainJob = CacheJobBuilder.<String, List<DatasetItem>>create()
                 .sourceFromWorkerDisks(targetDirectoryPath)
                 .routeTo("cpu-engine")
                 .userMethod(finalPath -> {
@@ -80,7 +86,7 @@ public class RunMenu {
                 .saveToNodeCache("trainItems")
                 .buildSetupJob();
 
-        ComputeJob<Void> setupTestJob = ComputeJobBuilder.<String, List<DatasetItem>>create()
+        CacheJob setupTestJob = CacheJobBuilder.<String, List<DatasetItem>>create()
                 .sourceFromWorkerDisks(targetDirectoryPath)
                 .routeTo("cpu-engine")
                 .userMethod(finalPath -> {
@@ -90,8 +96,8 @@ public class RunMenu {
                 .saveToNodeCache("testItems")
                 .buildSetupJob();
 
-        context.getComputeManager().executeOnAllNodes(setupTrainJob);
-        context.getComputeManager().executeOnAllNodes(setupTestJob);
+        context.getCacheManager().setupClusterCache(setupTrainJob);
+        context.getCacheManager().setupClusterCache(setupTestJob);
 
         Logger.success("Cache", "Train and Test items successfully cached on all nodes");
 
@@ -100,7 +106,7 @@ public class RunMenu {
     public static void testNodeRamCache(ClusterContext context){
         List<Integer> allNumbers = IntStream.rangeClosed(0, 1000).boxed().toList();
 
-        ComputeJob<Void> setupRamJob = ComputeJobBuilder.<Void, List<Integer>>create()
+        CacheJob setupRamJob = CacheJobBuilder.<Void, List<Integer>>create()
                 .sourceFromClientRam(n -> {
                     Logger.info("RAM test", "Orchestrator passed the number of nodes: " + n);
 
@@ -124,7 +130,7 @@ public class RunMenu {
                 .saveToNodeCache("testNumbers")
                 .buildSetupJob();
 
-        context.getComputeManager().executeOnAllNodes(setupRamJob);
+        context.getCacheManager().setupClusterCache(setupRamJob);
     }
 
     public static void shutdownCluster(ClusterContext context){
