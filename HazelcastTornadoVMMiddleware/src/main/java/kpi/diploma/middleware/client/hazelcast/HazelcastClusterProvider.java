@@ -3,10 +3,12 @@ package kpi.diploma.middleware.client.hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import kpi.diploma.middleware.client.api.spi.ClusterClientProvider;
 import kpi.diploma.middleware.client.hazelcast.connection.HazelcastConnection;
-import kpi.diploma.middleware.client.hazelcast.orchestration.compute.HazelcastComputeManager;
+import kpi.diploma.middleware.client.hazelcast.orchestration.pipeline.cache.HazelcastCacheManager;
+import kpi.diploma.middleware.client.hazelcast.orchestration.pipeline.compute.HazelcastComputeManager;
 import kpi.diploma.middleware.client.hazelcast.orchestration.distribution.HazelcastDataDistributor;
 import kpi.diploma.middleware.client.hazelcast.orchestration.manager.HazelcastSystemManager;
-import kpi.diploma.middleware.client.orchestration.compute.ClusterComputeManager;
+import kpi.diploma.middleware.client.orchestration.pipeline.cache.ClusterCacheManager;
+import kpi.diploma.middleware.client.orchestration.pipeline.compute.ClusterComputeManager;
 import kpi.diploma.middleware.client.orchestration.distribution.ClusterDataDistributor;
 import kpi.diploma.middleware.client.orchestration.manager.ClusterSystemManager;
 
@@ -32,11 +34,16 @@ public class HazelcastClusterProvider implements ClusterClientProvider {
     }
 
     @Override
+    public ClusterCacheManager createCacheManager() {
+        HazelcastInstance instance = HazelcastConnection.getInstance();
+        return new HazelcastCacheManager(instance);
+    }
+
+    @Override
     public ClusterComputeManager createComputeManager() {
         HazelcastInstance instance = HazelcastConnection.getInstance();
         return new HazelcastComputeManager(instance);
     }
-
 
     @Override
     public void disconnect() {
