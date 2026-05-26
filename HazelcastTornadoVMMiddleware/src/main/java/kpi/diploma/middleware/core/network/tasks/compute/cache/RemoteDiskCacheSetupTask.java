@@ -1,4 +1,4 @@
-package kpi.diploma.middleware.core.network.tasks.compute;
+package kpi.diploma.middleware.core.network.tasks.compute.cache;
 
 import com.hazelcast.cluster.Member;
 import com.hazelcast.core.HazelcastInstance;

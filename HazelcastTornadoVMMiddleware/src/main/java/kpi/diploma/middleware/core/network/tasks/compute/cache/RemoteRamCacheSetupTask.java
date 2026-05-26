@@ -1,4 +1,4 @@
-package kpi.diploma.middleware.core.network.tasks.compute;
+package kpi.diploma.middleware.core.network.tasks.compute.cache;
 
 import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.logging.Logger;
