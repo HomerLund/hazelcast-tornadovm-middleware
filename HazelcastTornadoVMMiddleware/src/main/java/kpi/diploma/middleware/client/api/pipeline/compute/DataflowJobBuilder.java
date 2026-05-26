@@ -1,4 +1,4 @@
-package kpi.diploma.middleware.client.api.compute;
+package kpi.diploma.middleware.client.api.pipeline.compute;
 
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.core.function.SerializableConsumer;
