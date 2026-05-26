@@ -1,7 +1,8 @@
 package kpi.diploma.middleware.client.api.context;
 
 import kpi.diploma.middleware.client.api.spi.ClusterClientProvider;
-import kpi.diploma.middleware.client.orchestration.compute.ClusterComputeManager;
+import kpi.diploma.middleware.client.orchestration.pipeline.cache.ClusterCacheManager;
+import kpi.diploma.middleware.client.orchestration.pipeline.compute.ClusterComputeManager;
 import kpi.diploma.middleware.client.orchestration.distribution.ClusterDataDistributor;
 import kpi.diploma.middleware.client.orchestration.manager.ClusterSystemManager;
 import kpi.diploma.middleware.server.bootstrap.node.config.PropertyFileReader;
@@ -13,7 +14,9 @@ public class ClusterContext implements AutoCloseable{
     private final ClusterClientProvider provider;
     private final ClusterSystemManager systemManager;
     private final ClusterDataDistributor<?> dataDistributor;
+    private final ClusterCacheManager cacheManager;
     private final ClusterComputeManager computeManager;
+
 
 
     private ClusterContext(ClusterClientProvider provider, Properties properties){
@@ -22,6 +25,7 @@ public class ClusterContext implements AutoCloseable{
 
         this.systemManager = provider.createSystemManager();
         this.dataDistributor = provider.createDataDistributor();
+        this.cacheManager = provider.createCacheManager();
         this.computeManager = provider.createComputeManager();
     }
 
@@ -42,6 +46,8 @@ public class ClusterContext implements AutoCloseable{
     public <T> ClusterDataDistributor<T> getDataDistributor(){
         return  (ClusterDataDistributor<T>) dataDistributor;
     }
+
+    public ClusterCacheManager getCacheManager() { return  cacheManager; }
 
     public ClusterComputeManager getComputeManager() { return computeManager; }
 
