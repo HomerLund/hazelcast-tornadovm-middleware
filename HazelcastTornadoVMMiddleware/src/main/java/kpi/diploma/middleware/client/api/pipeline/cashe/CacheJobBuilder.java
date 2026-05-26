@@ -1,5 +1,6 @@
 package kpi.diploma.middleware.client.api.pipeline.cashe;
 
+import kpi.diploma.middleware.client.orchestration.pipeline.jobs.CacheJob;
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.core.function.SerializableFunction;
 import kpi.diploma.middleware.core.network.tasks.compute.cache.RemoteDiskCacheSetupTask;
@@ -9,7 +10,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 
-public class ComputeJobBuilder<I, O> {
+public class CacheJobBuilder<I, O> {
     public enum SourceStrategy{
         WORKER_DISK,
         CLIENT_RAM
@@ -19,48 +20,47 @@ public class ComputeJobBuilder<I, O> {
 
     private String baseDiskDirectory;
 
-    private List<I> clientRamData;
     private Function<Integer, List<O>> clientPartitioner;
 
     private String targetPoolName;
     private SerializableFunction<I, O> userLambda;
-    private String cashKey;
+    private String cacheKey;
 
-    private ComputeJobBuilder(){}
+    private CacheJobBuilder(){}
 
-    public static <IN, OUT> ComputeJobBuilder<IN, OUT> create() {
-        return new ComputeJobBuilder<>();
+    public static <IN, OUT> CacheJobBuilder<IN, OUT> create() {
+        return new CacheJobBuilder<>();
     }
 
-    public ComputeJobBuilder<I, O> sourceFromWorkerDisks(String baseDiskDirectory){
+    public CacheJobBuilder<I, O> sourceFromWorkerDisks(String baseDiskDirectory){
         this.sourceStrategy = SourceStrategy.WORKER_DISK;
         this.baseDiskDirectory = baseDiskDirectory;
         return this;
     }
 
-    public ComputeJobBuilder<I, O> sourceFromClientRam(Function<Integer, List<O>> clientPartitioner){
+    public CacheJobBuilder<I, O> sourceFromClientRam(Function<Integer, List<O>> clientPartitioner){
         this.sourceStrategy = SourceStrategy.CLIENT_RAM;
         this.clientPartitioner = clientPartitioner;
         return this;
     }
 
-    public ComputeJobBuilder<I, O> routeTo(String poolName){
+    public CacheJobBuilder<I, O> routeTo(String poolName){
         this.targetPoolName = poolName;
         return this;
     }
 
-    public ComputeJobBuilder<I, O> userMethod(SerializableFunction<I, O> userLambda){
+    public CacheJobBuilder<I, O> userMethod(SerializableFunction<I, O> userLambda){
         this.userLambda = userLambda;
         return this;
     }
 
-    public ComputeJobBuilder<I, O> saveToNodeCache(String cashKey){
-        this.cashKey = cashKey;
+    public CacheJobBuilder<I, O> saveToNodeCache(String cashKey){
+        this.cacheKey = cashKey;
         return this;
     }
 
-    public ComputeJob<Void> buildSetupJob(){
-        if (targetPoolName == null || (userLambda == null && clientPartitioner == null) || cashKey == null){
+    public CacheJob buildSetupJob(){
+        if (targetPoolName == null || (userLambda == null && clientPartitioner == null) || cacheKey == null){
             throw new IllegalStateException("Incomplete task setup");
         }
 
@@ -68,8 +68,8 @@ public class ComputeJobBuilder<I, O> {
             case WORKER_DISK:
                 @SuppressWarnings("unchecked")
                 SerializableFunction<String, O> diskLambda = (SerializableFunction<String, O>) userLambda;
-                RemoteDiskCacheSetupTask<O> diskTask = new RemoteDiskCacheSetupTask<>(baseDiskDirectory, diskLambda, cashKey);
-                return new ComputeJob.Builder<Void>()
+                RemoteDiskCacheSetupTask<O> diskTask = new RemoteDiskCacheSetupTask<>(baseDiskDirectory, diskLambda, cacheKey);
+                return new CacheJob.Builder()
                         .poolName(targetPoolName)
                         .task(diskTask)
                         .build();
@@ -83,20 +83,17 @@ public class ComputeJobBuilder<I, O> {
 
                     List<Callable<Void>> tasks = new java.util.ArrayList<>();
                     for (O partition : userPartitions){
-                        tasks.add(new RemoteRamCacheSetupTask<>(partition, cashKey));
+                        tasks.add(new RemoteRamCacheSetupTask<>(partition, cacheKey));
                     }
 
                     return tasks;
                 };
-                return new ComputeJob.Builder<Void>()
+                return new CacheJob.Builder()
                         .poolName(targetPoolName)
                         .targetedGenerator(taskGenerator)
                         .build();
             default:
-                return new ComputeJob.Builder<Void>()
-                        .poolName(targetPoolName)
-                        .task(null)
-                        .build();
+                throw new IllegalStateException("Source strategy is not defined. Call sourceFromWorkerDisks() or sourceFromClientRam()");
         }
     }
 }
