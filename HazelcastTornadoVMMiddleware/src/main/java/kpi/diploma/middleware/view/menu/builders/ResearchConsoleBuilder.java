@@ -58,9 +58,9 @@ public class ResearchConsoleBuilder {
     }
 
     private void drawMenu(){
-        Logger.system("UI", "==============================");
+        Logger.system("UI", "====================================================");
         Logger.system("UI", "    " + menuTitle.toUpperCase());
-        Logger.system("UI", "==============================");
+        Logger.system("UI", "====================================================");
 
         for (Map.Entry<String, MenuItem> entry : menuItems.entrySet()){
             String prefix = entry.getValue().isBenchmark()
@@ -70,7 +70,7 @@ public class ResearchConsoleBuilder {
             Logger.system("UI", "    " + entry.getKey() + ". " + prefix + " " + entry.getValue().name());
         }
 
-        Logger.system("UI", "==============================");
+        Logger.system("UI", "====================================================");
         Logger.system("UI", "Select option (enter number):");
     }
 
