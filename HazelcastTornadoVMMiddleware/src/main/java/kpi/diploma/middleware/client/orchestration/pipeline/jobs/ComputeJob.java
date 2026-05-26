@@ -1,7 +1,5 @@
-package kpi.diploma.middleware.client.orchestration.pipeline.models;
+package kpi.diploma.middleware.client.orchestration.pipeline.jobs;
 
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
@@ -15,8 +13,6 @@ public class ComputeJob<T> extends ClusterJob<T> {
         private String targetPoolName;
         private Callable<T> networkTask;
 
-        private transient Function<Integer, List<Callable<T>>> targetedTaskGenerator;
-
         public Builder<T> poolName(String targetPoolName){
             this.targetPoolName = targetPoolName;
             return this;
@@ -24,11 +20,6 @@ public class ComputeJob<T> extends ClusterJob<T> {
 
         public Builder<T> task(Callable<T> task){
             this.networkTask = task;
-            return this;
-        }
-
-        public Builder<T> targetedGenerator(Function<Integer, List<Callable<T>>> generator){
-            this.targetedTaskGenerator = generator;
             return this;
         }
 
