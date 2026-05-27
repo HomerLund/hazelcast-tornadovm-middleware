@@ -1,11 +1,10 @@
 package kpi.diploma.middleware.client.api.pipeline.compute;
 
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
+import kpi.diploma.middleware.core.function.PipelineSink;
 import kpi.diploma.middleware.core.function.SerializableConsumer;
 import kpi.diploma.middleware.core.function.SerializableFunction;
-import kpi.diploma.middleware.core.network.tasks.compute.pipeline.RemoteBatchTask;
-import kpi.diploma.middleware.core.network.tasks.compute.pipeline.RemoteConsumeTask;
-import kpi.diploma.middleware.core.network.tasks.compute.pipeline.RemoteTransformTask;
+import kpi.diploma.middleware.core.network.tasks.compute.pipeline.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +77,31 @@ public class DataflowJobBuilder<I, O> {
         return (DataflowJobBuilder<I, List<O>>) this;
     }
 
+    @SuppressWarnings("unchecked")
+    public <NEW_O> DataflowJobBuilder<I, NEW_O> generateStream(SerializableFunction<O, Iterable<NEW_O>> generator){
+        if (currentTargetPoolName == null){
+            throw new IllegalStateException("Call routeTo() before generateStream()");
+        }
+
+        if (fusedLambda != null){
+            buildAndAppendTransformTask();
+        }
+
+        String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
+
+        RemoteGeneratorTask<O, NEW_O> task = new RemoteGeneratorTask<>(currentInputKey, nextChannelKey, generator);
+
+        pipelineJobs.add(new ComputeJob.Builder<Void>()
+                .poolName(currentTargetPoolName)
+                .task(task)
+                .build());
+
+        currentInputKey = nextChannelKey;
+        fusedLambda = null;
+
+        return (DataflowJobBuilder<I, NEW_O>) this;
+    }
+
     public List<ComputeJob<?>> consume (SerializableConsumer<O> finalLambda){
         if (currentTargetPoolName == null){
             buildAndAppendTransformTask();
@@ -92,6 +116,26 @@ public class DataflowJobBuilder<I, O> {
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
                 .task(consumeTask)
+                .build());
+
+        return pipelineJobs;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <R> List<ComputeJob<?>> sink(PipelineSink<O, R> sink){
+        if (currentTargetPoolName == null){
+            throw new IllegalStateException("Call routeTo() before sink()");
+        }
+
+        RemoteFusedSinkTask<Object, O, R> fusedTask = new RemoteFusedSinkTask<>(
+                currentInputKey,
+                (SerializableFunction<Object, O>) fusedLambda,
+                sink
+        );
+
+        pipelineJobs.add(new ComputeJob.Builder<R>()
+                .poolName(currentTargetPoolName)
+                .task(fusedTask)
                 .build());
 
         return pipelineJobs;
