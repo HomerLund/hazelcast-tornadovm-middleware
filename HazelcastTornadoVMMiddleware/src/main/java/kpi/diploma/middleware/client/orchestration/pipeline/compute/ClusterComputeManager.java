@@ -8,5 +8,5 @@ import java.util.Map;
 
 public interface ClusterComputeManager {
     void executePipeline(List<ComputeJob<?>> pipeline);
-    <T> Map<Member, T> executeAndGatherResults(ComputeJob<T> job);
+    <R> Map<String, R> executeAndGatherResults(List<ComputeJob<?>> pipeline);
 }
