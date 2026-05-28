@@ -17,17 +17,19 @@ public class RemoteConsumeTask<I> implements Callable<Void>, Serializable {
 
     private final String inputKey;
     private final SerializableConsumer<I> lambda;
+    private final int parallelism;
 
-    public RemoteConsumeTask(String inputKey, SerializableConsumer<I> lambda) {
+    public RemoteConsumeTask(String inputKey, SerializableConsumer<I> lambda, int parallelism) {
         this.inputKey = inputKey;
         this.lambda = lambda;
+        this.parallelism = parallelism;
     }
 
 
     @Override
     public Void call() throws Exception {
         try {
-            Queue<I> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
+            Queue<I> inQueue = NodeLocalWorkspace.waitForQueue(inputKey);
 
             I item;
 
@@ -39,7 +41,7 @@ public class RemoteConsumeTask<I> implements Callable<Void>, Serializable {
                 }
 
                 if (item == null) {
-                    if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()) {
+                    if (NodeLocalWorkspace.inQueueFinished(inputKey) && inQueue.isEmpty()) {
                         break;
                     }
 
