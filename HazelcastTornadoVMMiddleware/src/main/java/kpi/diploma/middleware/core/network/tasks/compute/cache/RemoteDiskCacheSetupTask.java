@@ -11,6 +11,7 @@ import kpi.diploma.middleware.core.network.MiddlewareConstants;
 import java.io.Serial;
 import java.io.Serializable;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -52,8 +53,7 @@ public class RemoteDiskCacheSetupTask<O> implements Callable<Void>, Serializable
 
             if (cashKey != null && result != null) {
                 if (result instanceof Collection<?> collection) {
-                    ConcurrentLinkedQueue<?> safeQueue = new ConcurrentLinkedQueue<>(collection);
-                    NodeLocalWorkspace.put(cashKey, safeQueue);
+                    NodeLocalWorkspace.put(cashKey, result);
 
                     Logger.success("Node Cache", "Successfully cached Thread-Safe Queue (size: "
                             + collection.size() + ") under key: '" + cashKey + "'");
