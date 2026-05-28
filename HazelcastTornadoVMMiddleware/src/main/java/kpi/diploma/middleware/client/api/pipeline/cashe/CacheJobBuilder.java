@@ -6,6 +6,7 @@ import kpi.diploma.middleware.core.function.SerializableFunction;
 import kpi.diploma.middleware.core.network.tasks.compute.cache.RemoteDiskCacheSetupTask;
 import kpi.diploma.middleware.core.network.tasks.compute.cache.RemoteRamCacheSetupTask;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
@@ -41,6 +42,20 @@ public class CacheJobBuilder<I, O> {
     public CacheJobBuilder<I, O> sourceFromClientRam(Function<Integer, List<O>> clientPartitioner){
         this.sourceStrategy = SourceStrategy.CLIENT_RAM;
         this.clientPartitioner = clientPartitioner;
+        return this;
+    }
+
+    public CacheJobBuilder<I, O> broadcastFromClientRam(O objectToBroadcast){
+        this.sourceStrategy = SourceStrategy.CLIENT_RAM;
+
+        this.clientPartitioner = (nodeCunt) -> {
+            List<O> identicalPartitions = new ArrayList<>(nodeCunt);
+            for (int i = 0; i < nodeCunt; i++) {
+                identicalPartitions.add(objectToBroadcast);
+            }
+            return identicalPartitions;
+        };
+
         return this;
     }
 
