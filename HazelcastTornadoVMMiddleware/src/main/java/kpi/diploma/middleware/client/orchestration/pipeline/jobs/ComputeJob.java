@@ -5,13 +5,21 @@ import java.util.concurrent.Callable;
 import java.util.function.Function;
 
 public class ComputeJob<T> extends ClusterJob<T> {
+    private final int parallelism;
+
     private ComputeJob(Builder<T> builder){
         super(builder.targetPoolName, builder.networkTask);
+        this.parallelism = builder.parallelism;
+    }
+
+    public int getParallelism(){
+        return parallelism;
     }
 
     public static class Builder<T> {
         private String targetPoolName;
         private Callable<T> networkTask;
+        private int parallelism = 1;
 
         public Builder<T> poolName(String targetPoolName){
             this.targetPoolName = targetPoolName;
@@ -20,6 +28,11 @@ public class ComputeJob<T> extends ClusterJob<T> {
 
         public Builder<T> task(Callable<T> task){
             this.networkTask = task;
+            return this;
+        }
+
+        public Builder<T> parallelism(int parallelism){
+            this.parallelism = parallelism;
             return this;
         }
 
