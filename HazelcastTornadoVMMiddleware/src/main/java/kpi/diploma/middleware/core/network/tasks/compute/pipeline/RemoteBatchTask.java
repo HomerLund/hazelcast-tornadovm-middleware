@@ -31,14 +31,14 @@ public class RemoteBatchTask<O> implements Callable<Void>, Serializable {
     public Void call() throws Exception {
         Queue<O> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
 
-        BlockingQueue<List<O>> outQueue = NodeLocalWorkspace.getOrCreateBlockingQueue(outputKey, MiddlewareConstants.MAX_BATCH_SIZE);
+        BlockingQueue<List<O>> outQueue = NodeLocalWorkspace.getOrCreateBlockingQueue(outputKey, MiddlewareConstants.MAX_BATCH_QUEUE_CAPACITY);
 
         List<O> currentBatch = new ArrayList<>(batchSize);
         O item;
 
         while (true){
             if (inQueue instanceof BlockingQueue){
-                item = ((BlockingQueue<O>) inQueue).poll(MiddlewareConstants.MAX_BATCH_SIZE, TimeUnit.MILLISECONDS);
+                item = ((BlockingQueue<O>) inQueue).poll(MiddlewareConstants.MAX_BATCH_QUEUE_CAPACITY, TimeUnit.MILLISECONDS);
             }
             else{
                 item = inQueue.poll();
