@@ -1,13 +1,15 @@
 package kpi.diploma.middleware.core.context;
 
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class NodeLocalWorkspace {
     private static final ConcurrentHashMap<String, Object> cache = new ConcurrentHashMap<>();
 
-    private static final AtomicBoolean endOfStream = new AtomicBoolean(false);
+    private static final ConcurrentHashMap<String, AtomicInteger> producersCount = new ConcurrentHashMap<>();
 
     private NodeLocalWorkspace(){}
 
@@ -38,11 +40,34 @@ public class NodeLocalWorkspace {
         return (BlockingQueue<T>) cache.computeIfAbsent(key, k -> new LinkedBlockingQueue<>(capacity));
     }
 
-    public static void setEndOfStream(boolean isEnd){
-        endOfStream.set(isEnd);
+    @SuppressWarnings("unchecked")
+    public static <T> Queue<T> waitForQueue(String key) throws InterruptedException{
+        Queue<T> queue = null;
+        while (queue == null){
+            Object object = cache.get(key);
+            if (object instanceof Queue){
+                queue = (Queue<T>) object;
+            }
+            else{
+                Thread.sleep(50);
+            }
+        }
+        return queue;
     }
 
-    public static boolean isEndOfStream(){
-        return endOfStream.get();
+    public static void registerProducers(String queueKey, int count){
+        producersCount.putIfAbsent(queueKey, new AtomicInteger(count));
+    }
+
+    public static void notifyProducerFinished(String queueKey){
+        AtomicInteger count = producersCount.get(queueKey);
+        if (count != null){
+            count.decrementAndGet();
+        }
+    }
+
+    public static boolean inQueueFinished(String queueKey){
+        AtomicInteger count = producersCount.get(queueKey);
+        return count != null && count.get() <= 0;
     }
 }
