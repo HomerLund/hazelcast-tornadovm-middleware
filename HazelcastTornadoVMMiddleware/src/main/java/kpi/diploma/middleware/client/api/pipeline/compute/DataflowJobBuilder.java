@@ -2,6 +2,7 @@ package kpi.diploma.middleware.client.api.pipeline.compute;
 
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.core.function.PipelineSink;
+import kpi.diploma.middleware.core.function.SerializableBiFunction;
 import kpi.diploma.middleware.core.function.SerializableConsumer;
 import kpi.diploma.middleware.core.function.SerializableFunction;
 import kpi.diploma.middleware.core.network.tasks.compute.pipeline.*;
@@ -59,6 +60,27 @@ public class DataflowJobBuilder<I, O> {
     }
 
     @SuppressWarnings("unchecked")
+    public <B, NEW_O> DataflowJobBuilder<I, NEW_O> mapWithBroadcast(String broadcastKey, Class<B> broadcastType , SerializableBiFunction<O, B, NEW_O> step){
+        if (currentTargetPoolName == null){
+            throw new IllegalStateException("Call routeTo() before mapWithBroadcast()");
+        }
+
+        String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
+
+        RemoteBroadcastTransformTask<O, B, NEW_O> task = new RemoteBroadcastTransformTask<>(currentInputKey, nextChannelKey, broadcastKey, step, currentParallelism);
+
+        pipelineJobs.add(new ComputeJob.Builder<Void>()
+                .poolName(currentTargetPoolName)
+                .task(task)
+                .parallelism(currentParallelism)
+                .build());
+
+        currentInputKey = nextChannelKey;
+
+        return (DataflowJobBuilder<I, NEW_O>)  this;
+    }
+
+    @SuppressWarnings("unchecked")
     public DataflowJobBuilder<I, List<O>> asBatch(int batchSize){
         if (currentTargetPoolName == null){
             throw new IllegalStateException("Call routeTo() before asBatch()");
@@ -70,7 +92,7 @@ public class DataflowJobBuilder<I, O> {
 
         String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
 
-        RemoteBatchTask<O> batchTask = new RemoteBatchTask<>(currentInputKey, nextChannelKey, batchSize);
+        RemoteBatchTask<O> batchTask = new RemoteBatchTask<>(currentInputKey, nextChannelKey, batchSize, currentParallelism);
 
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
@@ -114,7 +136,7 @@ public class DataflowJobBuilder<I, O> {
             buildAndAppendTransformTask();
         }
 
-        RemoteConsumeTask<O> consumeTask = new RemoteConsumeTask<>(currentInputKey, finalLambda);
+        RemoteConsumeTask<O> consumeTask = new RemoteConsumeTask<>(currentInputKey, finalLambda, currentParallelism);
 
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
@@ -134,7 +156,8 @@ public class DataflowJobBuilder<I, O> {
         RemoteFusedSinkTask<Object, O, R> fusedTask = new RemoteFusedSinkTask<>(
                 currentInputKey,
                 (SerializableFunction<Object, O>) fusedLambda,
-                sink
+                sink,
+                currentParallelism
         );
 
         pipelineJobs.add(new ComputeJob.Builder<R>()
@@ -148,7 +171,7 @@ public class DataflowJobBuilder<I, O> {
 
     private void buildAndAppendTransformTask(){
         String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
-        RemoteTransformTask<Object, Object> task = new RemoteTransformTask<>(currentInputKey, nextChannelKey, fusedLambda);
+        RemoteTransformTask<Object, Object> task = new RemoteTransformTask<>(currentInputKey, nextChannelKey, fusedLambda, currentParallelism);
 
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
