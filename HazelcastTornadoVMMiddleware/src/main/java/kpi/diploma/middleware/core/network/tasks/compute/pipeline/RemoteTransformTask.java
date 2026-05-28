@@ -28,13 +28,13 @@ public class RemoteTransformTask<I, O> implements Callable<Void>, Serializable {
     @Override
     public Void call() throws Exception {
         Queue<I> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
-        BlockingQueue<O> outQueue = NodeLocalWorkspace.getOrCreateBlockingQueue(outputKey, MiddlewareConstants.MAX_BATCH_SIZE);
+        BlockingQueue<O> outQueue = NodeLocalWorkspace.getOrCreateBlockingQueue(outputKey, MiddlewareConstants.MAX_CHANNEL_CAPACITY);
 
         I item;
 
         while (true){
             if (inQueue instanceof BlockingQueue){
-                item = ((BlockingQueue<I>) inQueue).poll(MiddlewareConstants.MAX_BATCH_SIZE, TimeUnit.MILLISECONDS);
+                item = ((BlockingQueue<I>) inQueue).poll(MiddlewareConstants.MAX_CHANNEL_CAPACITY, TimeUnit.MILLISECONDS);
             }
             else {
                 item = inQueue.poll();
