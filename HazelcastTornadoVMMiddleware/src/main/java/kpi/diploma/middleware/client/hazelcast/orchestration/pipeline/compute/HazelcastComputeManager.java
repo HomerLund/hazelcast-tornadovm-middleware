@@ -32,9 +32,10 @@ public class HazelcastComputeManager implements ClusterComputeManager {
                 IExecutorService executorService = hazelcastInstance.getExecutorService(job.getTargetPoolName());
                 Logger.info("ComputeManager", "Starting stage in pool: [" + job.getTargetPoolName() + "]");
 
-                Map<Member, ? extends Future<?>> futures = executorService.submitToAllMembers(job.getNetworkTask());
-
-                allFutures.addAll(futures.values());
+                for (int p = 0; p < job.getParallelism(); p++) {
+                    Map<Member, ? extends Future<?>> futures = executorService.submitToAllMembers(job.getNetworkTask());
+                    allFutures.addAll(futures.values());
+                }
             }
 
             Logger.info("ComputeManager", "All pipeline stages deployed. Waiting for execution to complete...");
@@ -76,10 +77,16 @@ public class HazelcastComputeManager implements ClusterComputeManager {
                 IExecutorService executorService = hazelcastInstance.getExecutorService(job.getTargetPoolName());
 
                 if (i == pipeline.size() - 1) {
+                    if (job.getParallelism() > 1){
+                        throw new IllegalStateException("Terminal sink job must have parallelism = 1");
+                    }
+
                     terminalFutures = (Map<Member, Future<R>>) (Map) executorService.submitToAllMembers(job.getNetworkTask());
                 } else {
-                    Map<Member, ? extends Future<?>> futures = executorService.submitToAllMembers(job.getNetworkTask());
-                    allFutures.addAll(futures.values());
+                    for (int p = 0; p < job.getParallelism(); p++) {
+                        Map<Member, ? extends Future<?>> futures = executorService.submitToAllMembers(job.getNetworkTask());
+                        allFutures.addAll(futures.values());
+                    }
                 }
             }
 
