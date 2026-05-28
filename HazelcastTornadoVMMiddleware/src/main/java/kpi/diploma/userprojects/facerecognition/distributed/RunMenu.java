@@ -171,20 +171,24 @@ public class RunMenu {
         float learningRate = 0.00001f;
         String targetLabel = "face";
 
-        for (int epoch = 0; epoch <= epochs ; epoch++) {
+        for (int epoch = 1; epoch <= epochs ; epoch++) {
             Logger.info("Training", "--- Epoch " + epoch + "/" + epochs + "---");
-
-            NodeLocalWorkspace.setEndOfStream(false);
 
             final NeuralNetwork currentNetwork = network;
 
+            String epochTrainItemsKeyName = "trainingQueue";
+            List<ComputeJob<?>> setupPipeline = DataflowJobBuilder.<List<DatasetItem>>sourceFromNodeCache(trainItemsCacheName)
+                    .routeTo("io-reader")
+                    .generateStream(epochTrainItemsKeyName, cachedTrainItems -> {
+                        List<DatasetItem> trainItems = new ArrayList<>(cachedTrainItems);
+                        java.util.Collections.shuffle(trainItems);
+                        return trainItems;
+                    });
+
+            context.getComputeManager().executePipeline(setupPipeline);
+
             List<ComputeJob<?>> trainPipeline =
-                    DataflowJobBuilder.<List<DatasetItem>>sourceFromNodeCache(trainItemsCacheName)
-                            .routeTo("io-reader")
-                            .generateStream(trainItems -> {
-                                java.util.Collections.shuffle(trainItems);
-                                return trainItems;
-                            })
+                    DataflowJobBuilder.<DatasetItem>sourceFromNodeCache(epochTrainItemsKeyName)
                             .routeTo("cpu-engine")
                             .map(datasetItem -> {
                                 try {
@@ -222,7 +226,7 @@ public class RunMenu {
                                 currentNetwork.backward(predictions, flattenedLabels);
                                 currentNetwork.updateWeights(learningRate);
 
-                                double batchTotalSize = 0.0;
+                                double batchTotalLoss = 0.0;
                                 int correctCount = 0;
 
                                 for (int i = 0; i < currentBatchSize; i++) {
@@ -230,7 +234,7 @@ public class RunMenu {
                                     float label = flattenedLabels[i];
 
                                     float p = Math.max(1e-7f, Math.min(1.0f - 1e-7f, prediction));
-                                    batchTotalSize += -(label * Math.log(p) + (1 - label) * Math.log(1 - p));
+                                    batchTotalLoss += -(label * Math.log(p) + (1 - label) * Math.log(1 - p));
 
                                     boolean isPredicatedPositive = prediction >= 0.5f;
                                     boolean isActualPositive = label == 1.0f;
@@ -241,7 +245,7 @@ public class RunMenu {
                                 }
 
                                 return new EpochResult(
-                                        batchTotalSize / currentBatchSize,
+                                        batchTotalLoss / currentBatchSize,
                                         ((double) correctCount / currentBatchSize) * 100,
                                         currentNetwork
                                 );
@@ -268,7 +272,17 @@ public class RunMenu {
                             });
 
             Map<String, EpochResult> trainResults = context.getComputeManager().executeAndGatherResults(trainPipeline);
+
+            EpochResult nodeResult = trainResults.values().iterator().next();
+            network = nodeResult.network();
+
+            double avgLoss = trainResults.values().stream().mapToDouble(EpochResult::loss).average().orElse(0);
+            double avgAccuracy = trainResults.values().stream().mapToDouble((EpochResult::accuracy)).average().orElse(0);
+
+            Logger.success("Training", String.format("Loss: %.4f | Accuracy: %.2f%%", avgLoss, avgAccuracy));
         }
+
+        Logger.success("Training", "Distributed Pipeline execution completed");
     }
 
     public static void shutdownCluster(ClusterContext context){
