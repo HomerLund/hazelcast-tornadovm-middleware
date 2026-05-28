@@ -32,7 +32,7 @@ public class RemoteConsumeTask<I> implements Callable<Void>, Serializable {
 
         while(true){
             if (inQueue instanceof BlockingQueue){
-                item = ((BlockingQueue<I>) inQueue).poll(MiddlewareConstants.MAX_BATCH_SIZE, TimeUnit.MILLISECONDS);
+                item = ((BlockingQueue<I>) inQueue).poll(MiddlewareConstants.MAX_CHANNEL_CAPACITY, TimeUnit.MILLISECONDS);
             }
             else{
                 item = inQueue.poll();
