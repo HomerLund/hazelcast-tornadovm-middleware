@@ -16,6 +16,7 @@ public class DataflowJobBuilder<I, O> {
     private String currentInputKey;
     private String currentTargetPoolName;
     private SerializableFunction<Object, Object> fusedLambda = null;
+    private int currentParallelism = 1;
 
     private DataflowJobBuilder(String startCacheKey){
         this.currentInputKey = startCacheKey;
@@ -26,12 +27,17 @@ public class DataflowJobBuilder<I, O> {
     }
 
     public DataflowJobBuilder<I, O> routeTo(String poolName){
+        return routeTo(poolName, 1);
+    }
+
+    public DataflowJobBuilder<I, O> routeTo(String poolName, int parallelism){
         if (this.currentTargetPoolName != null && fusedLambda != null){
             buildAndAppendTransformTask();
         }
 
         this.currentTargetPoolName = poolName;
         this.fusedLambda = null;
+        this.currentParallelism = parallelism;
         return this;
     }
 
@@ -69,6 +75,7 @@ public class DataflowJobBuilder<I, O> {
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
                 .task(batchTask)
+                .parallelism(currentParallelism)
                 .build());
 
         currentInputKey = nextChannelKey;
@@ -77,7 +84,7 @@ public class DataflowJobBuilder<I, O> {
         return (DataflowJobBuilder<I, List<O>>) this;
     }
 
-    @SuppressWarnings("unchecked")
+
     public <NEW_O> List<ComputeJob<?>> generateStream(String outputKey, SerializableFunction<O, Iterable<NEW_O>> generator){
         if (currentTargetPoolName == null){
             throw new IllegalStateException("Call routeTo() before generateStream()");
@@ -92,6 +99,7 @@ public class DataflowJobBuilder<I, O> {
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
                 .task(task)
+                .parallelism(currentParallelism)
                 .build());
 
         return pipelineJobs;
@@ -99,7 +107,7 @@ public class DataflowJobBuilder<I, O> {
 
     public List<ComputeJob<?>> consume (SerializableConsumer<O> finalLambda){
         if (currentTargetPoolName == null){
-            buildAndAppendTransformTask();
+            throw new IllegalStateException("Call routeTo() before consume()");
         }
 
         if (fusedLambda != null){
@@ -111,6 +119,7 @@ public class DataflowJobBuilder<I, O> {
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
                 .task(consumeTask)
+                .parallelism(currentParallelism)
                 .build());
 
         return pipelineJobs;
@@ -131,6 +140,7 @@ public class DataflowJobBuilder<I, O> {
         pipelineJobs.add(new ComputeJob.Builder<R>()
                 .poolName(currentTargetPoolName)
                 .task(fusedTask)
+                .parallelism(currentParallelism)
                 .build());
 
         return pipelineJobs;
@@ -143,6 +153,7 @@ public class DataflowJobBuilder<I, O> {
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
                 .task(task)
+                .parallelism(currentParallelism)
                 .build());
 
         currentInputKey = nextChannelKey;
