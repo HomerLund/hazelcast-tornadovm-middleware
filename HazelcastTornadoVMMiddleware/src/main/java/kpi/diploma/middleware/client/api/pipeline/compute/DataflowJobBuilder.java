@@ -78,7 +78,7 @@ public class DataflowJobBuilder<I, O> {
     }
 
     @SuppressWarnings("unchecked")
-    public <NEW_O> DataflowJobBuilder<I, NEW_O> generateStream(SerializableFunction<O, Iterable<NEW_O>> generator){
+    public <NEW_O> List<ComputeJob<?>> generateStream(String outputKey, SerializableFunction<O, Iterable<NEW_O>> generator){
         if (currentTargetPoolName == null){
             throw new IllegalStateException("Call routeTo() before generateStream()");
         }
@@ -87,19 +87,14 @@ public class DataflowJobBuilder<I, O> {
             buildAndAppendTransformTask();
         }
 
-        String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
-
-        RemoteGeneratorTask<O, NEW_O> task = new RemoteGeneratorTask<>(currentInputKey, nextChannelKey, generator);
+        RemoteStreamGeneratorTask<O, NEW_O> task = new RemoteStreamGeneratorTask<>(currentInputKey, outputKey, generator);
 
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
                 .task(task)
                 .build());
 
-        currentInputKey = nextChannelKey;
-        fusedLambda = null;
-
-        return (DataflowJobBuilder<I, NEW_O>) this;
+        return pipelineJobs;
     }
 
     public List<ComputeJob<?>> consume (SerializableConsumer<O> finalLambda){
