@@ -48,7 +48,7 @@ public class RemoteStreamGeneratorTask<I, O> implements Callable<Void>, Serializ
 
             NodeLocalWorkspace.put(outputKey, workQueue);
 
-            NodeLocalWorkspace.setEndOfStream(true);
+            NodeLocalWorkspace.registerProducers(outputKey, 0);
 
             Logger.info("Stream Generator", "Successfully materialized stream into Queue under key: " + outputKey);
             return null;
