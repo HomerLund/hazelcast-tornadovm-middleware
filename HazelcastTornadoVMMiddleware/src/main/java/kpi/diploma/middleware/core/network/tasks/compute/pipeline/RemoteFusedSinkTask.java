@@ -27,30 +27,37 @@ public class RemoteFusedSinkTask<I, O, R> implements Callable<R>, Serializable {
 
     @Override
     public R call() throws Exception {
-        Queue<I> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
-        I item;
+        try {
+            Queue<I> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
+            I item;
 
-        while (true){
-            if (inQueue instanceof BlockingQueue){
-                item = ((BlockingQueue<I>) inQueue).poll(100, TimeUnit.MILLISECONDS);
-            }
-            else{
-                item = inQueue.poll();
-            }
-
-            if (item == null){
-                if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()){
-                    break;
+            while (true) {
+                if (inQueue instanceof BlockingQueue) {
+                    item = ((BlockingQueue<I>) inQueue).poll(100, TimeUnit.MILLISECONDS);
+                } else {
+                    item = inQueue.poll();
                 }
 
-                continue;
+                if (item == null) {
+                    if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()) {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                O mappedResult = (fusedLambda != null) ? fusedLambda.apply(item) : (O) item;
+
+                sink.process(mappedResult);
             }
 
-            O mappedResult = (fusedLambda != null) ? fusedLambda.apply(item) : (O) item;
-
-            sink.process(mappedResult);
+            return sink.getResult();
         }
-
-        return sink.getResult();
+        catch (Exception e) {
+            System.err.println("Error in RemoteFusedSinkTask: ");
+            e.printStackTrace();
+            throw e;
+        }
     }
+
 }

@@ -26,29 +26,35 @@ public class RemoteConsumeTask<I> implements Callable<Void>, Serializable {
 
     @Override
     public Void call() throws Exception {
-        Queue<I> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
+        try {
+            Queue<I> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
 
-        I item;
+            I item;
 
-        while(true){
-            if (inQueue instanceof BlockingQueue){
-                item = ((BlockingQueue<I>) inQueue).poll(MiddlewareConstants.MAX_CHANNEL_CAPACITY, TimeUnit.MILLISECONDS);
-            }
-            else{
-                item = inQueue.poll();
-            }
-
-            if (item == null){
-                if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()){
-                    break;
+            while (true) {
+                if (inQueue instanceof BlockingQueue) {
+                    item = ((BlockingQueue<I>) inQueue).poll(MiddlewareConstants.MAX_CHANNEL_CAPACITY, TimeUnit.MILLISECONDS);
+                } else {
+                    item = inQueue.poll();
                 }
 
-                continue;
+                if (item == null) {
+                    if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()) {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                lambda.accept(item);
             }
 
-            lambda.accept(item);
+            return null;
         }
-
-        return null;
+        catch (Exception e) {
+            System.err.println("Error in RemoteConsumeTask: ");
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

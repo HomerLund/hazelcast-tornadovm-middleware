@@ -29,41 +29,47 @@ public class RemoteBatchTask<O> implements Callable<Void>, Serializable {
 
     @Override
     public Void call() throws Exception {
-        Queue<O> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
+        try {
+            Queue<O> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
 
-        BlockingQueue<List<O>> outQueue = NodeLocalWorkspace.getOrCreateBlockingQueue(outputKey, MiddlewareConstants.MAX_BATCH_QUEUE_CAPACITY);
+            BlockingQueue<List<O>> outQueue = NodeLocalWorkspace.getOrCreateBlockingQueue(outputKey, MiddlewareConstants.MAX_BATCH_QUEUE_CAPACITY);
 
-        List<O> currentBatch = new ArrayList<>(batchSize);
-        O item;
+            List<O> currentBatch = new ArrayList<>(batchSize);
+            O item;
 
-        while (true){
-            if (inQueue instanceof BlockingQueue){
-                item = ((BlockingQueue<O>) inQueue).poll(MiddlewareConstants.MAX_BATCH_QUEUE_CAPACITY, TimeUnit.MILLISECONDS);
-            }
-            else{
-                item = inQueue.poll();
-            }
-
-            if (item == null){
-                if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()){
-                    if (!currentBatch.isEmpty()){
-                        outQueue.put(currentBatch);
-                    }
-                    break;
+            while (true) {
+                if (inQueue instanceof BlockingQueue) {
+                    item = ((BlockingQueue<O>) inQueue).poll(MiddlewareConstants.MAX_BATCH_QUEUE_CAPACITY, TimeUnit.MILLISECONDS);
+                } else {
+                    item = inQueue.poll();
                 }
 
-                continue;
+                if (item == null) {
+                    if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()) {
+                        if (!currentBatch.isEmpty()) {
+                            outQueue.put(currentBatch);
+                        }
+                        break;
+                    }
+
+                    continue;
+                }
+
+                currentBatch.add(item);
+
+                if (currentBatch.size() == batchSize) {
+                    outQueue.put(currentBatch);
+
+                    currentBatch = new ArrayList<>(batchSize);
+                }
             }
 
-            currentBatch.add(item);
-
-            if (currentBatch.size() == batchSize){
-                outQueue.put(currentBatch);
-
-                currentBatch = new ArrayList<>(batchSize);
-            }
+            return null;
         }
-
-        return null;
+        catch (Exception e) {
+            System.err.println("Error in RemoteConsumeTask: ");
+            e.printStackTrace();
+            throw e;
+        }
     }
 }
