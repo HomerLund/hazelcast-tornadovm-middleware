@@ -18,17 +18,19 @@ public class RemoteFusedSinkTask<I, O, R> implements Callable<R>, Serializable {
     private final String inputKey;
     private final SerializableFunction<I, O> fusedLambda;
     private final PipelineSink<O, R> sink;
+    private final int parallelism;
 
-    public RemoteFusedSinkTask(String inputKey, SerializableFunction<I, O> fusedLambda, PipelineSink<O, R> sink) {
+    public RemoteFusedSinkTask(String inputKey, SerializableFunction<I, O> fusedLambda, PipelineSink<O, R> sink, int parallelism) {
         this.inputKey = inputKey;
         this.fusedLambda = fusedLambda;
         this.sink = sink;
+        this.parallelism = parallelism;
     }
 
     @Override
     public R call() throws Exception {
         try {
-            Queue<I> inQueue = NodeLocalWorkspace.getOrCreateQueue(inputKey);
+            Queue<I> inQueue = NodeLocalWorkspace.waitForQueue(inputKey);
             I item;
 
             while (true) {
@@ -39,7 +41,7 @@ public class RemoteFusedSinkTask<I, O, R> implements Callable<R>, Serializable {
                 }
 
                 if (item == null) {
-                    if (NodeLocalWorkspace.isEndOfStream() && inQueue.isEmpty()) {
+                    if (NodeLocalWorkspace.inQueueFinished(inputKey) && inQueue.isEmpty()) {
                         break;
                     }
 
