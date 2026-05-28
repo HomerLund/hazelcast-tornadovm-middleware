@@ -3,16 +3,14 @@ package kpi.diploma.middleware.core.network.tasks.compute.pipeline;
 import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.function.SerializableFunction;
 import kpi.diploma.middleware.core.logging.Logger;
-import kpi.diploma.middleware.core.network.MiddlewareConstants;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class RemoteGeneratorTask<I, O> implements Callable<Void>, Serializable {
+public class RemoteStreamGeneratorTask<I, O> implements Callable<Void>, Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
@@ -20,7 +18,7 @@ public class RemoteGeneratorTask<I, O> implements Callable<Void>, Serializable {
     private final String outputKey;
     private final SerializableFunction<I, Iterable<O>> generatorLambda;
 
-    public RemoteGeneratorTask(String inputKey, String outputKey, SerializableFunction<I, Iterable<O>> fusedLambda) {
+    public RemoteStreamGeneratorTask(String inputKey, String outputKey, SerializableFunction<I, Iterable<O>> fusedLambda) {
         this.inputKey = inputKey;
         this.outputKey = outputKey;
         this.generatorLambda = fusedLambda;
