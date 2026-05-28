@@ -171,10 +171,18 @@ public class RunMenu {
         float learningRate = 0.00001f;
         String targetLabel = "face";
 
+        String networkCacheKey = "neural_network";
+
+        CacheJob deployNetworkJob = CacheJobBuilder.<Void, NeuralNetwork>create()
+                .broadcastFromClientRam(network)
+                .routeTo("io-reader")
+                .saveToNodeCache(networkCacheKey)
+                .buildSetupJob();
+
+        context.getCacheManager().setupClusterCache(deployNetworkJob);
+
         for (int epoch = 1; epoch <= epochs ; epoch++) {
             Logger.info("Training", "--- Epoch " + epoch + "/" + epochs + "---");
-
-            final NeuralNetwork currentNetwork = network;
 
             String epochTrainItemsKeyName = "trainingQueue";
             List<ComputeJob<?>> setupPipeline = DataflowJobBuilder.<List<DatasetItem>>sourceFromNodeCache(trainItemsCacheName)
@@ -189,7 +197,7 @@ public class RunMenu {
 
             List<ComputeJob<?>> trainPipeline =
                     DataflowJobBuilder.<DatasetItem>sourceFromNodeCache(epochTrainItemsKeyName)
-                            .routeTo("cpu-engine")
+                            .routeTo("cpu-engine", 2)
                             .map(datasetItem -> {
                                 try {
                                     Path path = Paths.get(datasetItem.filePath());
@@ -206,7 +214,7 @@ public class RunMenu {
                             .routeTo("cpu-batcher")
                             .asBatch(32)
                             .routeTo("gpu-manager")
-                            .map(batch -> {
+                            .mapWithBroadcast(networkCacheKey, NeuralNetwork.class , (batch, localNetwork) -> {
                                 int currentBatchSize = batch.size();
 
                                 int inputSize = batch.get(0).features().length;
@@ -221,10 +229,10 @@ public class RunMenu {
                                     System.arraycopy(item.label(), 0, flattenedLabels, i * labelSize, labelSize);
                                 }
 
-                                float[] predictions = currentNetwork.forward(flattenedInputs);
+                                float[] predictions = localNetwork.forward(flattenedInputs);
 
-                                currentNetwork.backward(predictions, flattenedLabels);
-                                currentNetwork.updateWeights(learningRate);
+                                localNetwork.backward(predictions, flattenedLabels);
+                                localNetwork.updateWeights(learningRate);
 
                                 double batchTotalLoss = 0.0;
                                 int correctCount = 0;
@@ -246,8 +254,7 @@ public class RunMenu {
 
                                 return new EpochResult(
                                         batchTotalLoss / currentBatchSize,
-                                        ((double) correctCount / currentBatchSize) * 100,
-                                        currentNetwork
+                                        ((double) correctCount / currentBatchSize) * 100
                                 );
                             })
                             .routeTo("cpu-aggregator")
@@ -267,14 +274,13 @@ public class RunMenu {
 
                                 @Override
                                 public EpochResult getResult(){
-                                    return new EpochResult(totalLoss / batchCount, totalAccuracy / batchCount, lastResult.network());
+                                    return new EpochResult(totalLoss / batchCount, totalAccuracy / batchCount);
                                 }
                             });
 
             Map<String, EpochResult> trainResults = context.getComputeManager().executeAndGatherResults(trainPipeline);
 
             EpochResult nodeResult = trainResults.values().iterator().next();
-            network = nodeResult.network();
 
             double avgLoss = trainResults.values().stream().mapToDouble(EpochResult::loss).average().orElse(0);
             double avgAccuracy = trainResults.values().stream().mapToDouble((EpochResult::accuracy)).average().orElse(0);
@@ -293,7 +299,6 @@ public class RunMenu {
 
     public record EpochResult (
             double loss,
-            double accuracy,
-            NeuralNetwork network
+            double accuracy
     ) implements Serializable {}
 }
