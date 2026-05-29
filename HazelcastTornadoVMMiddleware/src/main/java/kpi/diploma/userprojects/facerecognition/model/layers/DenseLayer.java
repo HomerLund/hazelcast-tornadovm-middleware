@@ -2,6 +2,7 @@ package kpi.diploma.userprojects.facerecognition.model.layers;
 
 import kpi.diploma.userprojects.facerecognition.model.math.LinearAlgebra;
 
+import java.util.Arrays;
 import java.util.Random;
 
 public class DenseLayer implements Layer{
@@ -13,10 +14,10 @@ public class DenseLayer implements Layer{
 
     private final float[] finalWeightGradients;
     private final float[] finalBiasGradients;
-    private float[] expandedWeightGradients;
-    private float[] expandedBiasGradients;
 
+    private int maxBatchCapacity = 0;
     private int currentBatchSize = 0;
+
     private float[] inputCache;
     private float[] wXBuffer;
     private float[] outputCache;
@@ -36,16 +37,13 @@ public class DenseLayer implements Layer{
     }
 
     private void ensureCapacity(int batchSize){
-        if (this.currentBatchSize != batchSize){
-            this.currentBatchSize = batchSize;
+        this.currentBatchSize = batchSize;
+        if (batchSize > maxBatchCapacity){
+            this.maxBatchCapacity = batchSize;
 
-            this.wXBuffer = new float[batchSize * outputSize];
-            this.outputCache = new float[batchSize * outputSize];
-
-            this.inputGradient = new float[batchSize * inputSize];
-
-            this.expandedWeightGradients = new float[batchSize * outputSize * inputSize];
-            this.expandedBiasGradients = new float[batchSize * outputSize];
+            this.wXBuffer = new float[maxBatchCapacity * outputSize];
+            this.outputCache = new float[maxBatchCapacity * outputSize];
+            this.inputGradient = new float[maxBatchCapacity * inputSize];
         }
     }
 
@@ -66,16 +64,20 @@ public class DenseLayer implements Layer{
 
         LinearAlgebra.forwardBatch(
                 weights, outputSize, inputSize,
-                input, batchSize, wXBuffer
+                input, currentBatchSize, wXBuffer
         );
 
         LinearAlgebra.addBiasesBatch(
                 wXBuffer, biases, outputCache,
-                batchSize, outputSize
+                currentBatchSize, outputSize
         );
 
-
-        return outputCache;
+        if (currentBatchSize == maxBatchCapacity) {
+            return outputCache;
+        }
+        else{
+            return Arrays.copyOf(outputCache, currentBatchSize * outputSize);
+        }
     }
 
     @Override
@@ -83,20 +85,15 @@ public class DenseLayer implements Layer{
         LinearAlgebra.backwardBatch(
                 weights, outputSize, inputSize,
                 inputCache, outputGradient, currentBatchSize,
-                expandedWeightGradients, expandedBiasGradients, inputGradient
+                finalWeightGradients, finalBiasGradients, inputGradient
         );
 
-        LinearAlgebra.averageGradients(
-                expandedWeightGradients, finalWeightGradients,
-                currentBatchSize, outputSize * inputSize
-        );
-
-        LinearAlgebra.averageGradients(
-                expandedBiasGradients, finalBiasGradients,
-                currentBatchSize, outputSize
-        );
-
-        return inputGradient;
+        if (currentBatchSize == maxBatchCapacity) {
+            return inputGradient;
+        }
+        else{
+            return Arrays.copyOf(inputGradient, currentBatchSize * inputSize);
+        }
     }
 
     @Override

@@ -2,30 +2,47 @@ package kpi.diploma.userprojects.facerecognition.model.layers;
 
 import kpi.diploma.userprojects.facerecognition.model.math.Activations;
 
+import java.util.Arrays;
+
 public class SigmoidLayer implements Layer{
+    private int maxCapacity = 0;
     private int currentLength = 0;
+
     private float[] outputCache;
     private float[] inputGradient;
 
     private void ensureCapacity(int length){
-        if (currentLength != length){
-            currentLength = length;
-            outputCache = new float[length];
-            inputGradient = new float[length];
+        this.currentLength = length;
+        if (length > maxCapacity){
+            this.maxCapacity = length;
+            this.outputCache = new float[maxCapacity];
+            this.inputGradient = new float[maxCapacity];
         }
     }
 
     @Override
     public float[] forward(float[] input){
         ensureCapacity(input.length);
-        Activations.sigmoidForward(input, outputCache, input.length);
-        return outputCache;
+        Activations.sigmoidForward(input, outputCache, currentLength);
+
+        if (currentLength == maxCapacity) {
+            return outputCache;
+        }
+        else{
+            return Arrays.copyOf(outputCache, currentLength);
+        }
     }
 
     @Override
     public float[] backward(float[] outputGradient){
         Activations.sigmoidBackward(outputCache, outputGradient, inputGradient, currentLength);
-        return inputGradient;
+
+        if (currentLength == maxCapacity) {
+            return inputGradient;
+        }
+        else{
+            return Arrays.copyOf(inputGradient, currentLength);
+        }
     }
 
     @Override

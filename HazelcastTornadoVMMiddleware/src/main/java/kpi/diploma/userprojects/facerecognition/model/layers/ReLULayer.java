@@ -3,17 +3,23 @@ package kpi.diploma.userprojects.facerecognition.model.layers;
 import kpi.diploma.userprojects.facerecognition.model.math.Activations;
 import kpi.diploma.userprojects.facerecognition.model.math.LinearAlgebra;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class ReLULayer implements Layer{
+    private int maxCapacity = 0;
     private int currentLength = 0;
+
     private float[] inputCache;
     private float[] outputCache;
     private float[] inputGradient;
 
     private void ensureCapacity(int length){
-        if (currentLength != length){
-            currentLength = length;
-            outputCache = new float[length];
-            inputGradient = new float[length];
+        this.currentLength = length;
+        if (length > maxCapacity){
+            this.maxCapacity = length;
+            this.outputCache = new float[maxCapacity];
+            this.inputGradient = new float[maxCapacity];
         }
     }
 
@@ -22,13 +28,25 @@ public class ReLULayer implements Layer{
         this.inputCache = input;
         ensureCapacity(input.length);
 
-        Activations.reluForward(input, outputCache, input.length);
-        return outputCache;
+        Activations.reluForward(input, outputCache, currentLength);
+
+        if (currentLength == maxCapacity) {
+            return outputCache;
+        }
+        else{
+            return Arrays.copyOf(outputCache, currentLength);
+        }
     }
 
     @Override public float[] backward(float[] outputGradient){
         Activations.reluBackward(inputCache, outputGradient, inputGradient, currentLength);
-        return inputGradient;
+
+        if (currentLength == maxCapacity) {
+            return inputGradient;
+        }
+        else{
+            return Arrays.copyOf(inputGradient, currentLength);
+        }
     }
 
     @Override
