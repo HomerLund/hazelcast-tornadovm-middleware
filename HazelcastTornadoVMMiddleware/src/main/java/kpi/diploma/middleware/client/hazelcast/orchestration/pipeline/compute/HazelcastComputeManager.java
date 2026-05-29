@@ -59,7 +59,7 @@ public class HazelcastComputeManager implements ClusterComputeManager {
             throw new IllegalArgumentException("Pipeline is empty");
         }
 
-        Logger.info("ComputeManager", "Deploying pipeline with" + pipeline.size() + " stages");
+        Logger.info("ComputeManager", "Deploying pipeline with " + pipeline.size() + " stages");
 
         List<Future<?>> allFutures = new ArrayList<>();
         Map<Member, Future<R>> terminalFutures = null;
