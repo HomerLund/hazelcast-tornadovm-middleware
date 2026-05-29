@@ -56,6 +56,10 @@ public class RemoteBatchTask<O> implements Callable<Void>, Serializable {
                         if (!currentBatch.isEmpty()) {
                             outQueue.put(currentBatch);
                         }
+
+                        NodeLocalWorkspace.remove(inputKey);
+                        Logger.info("RemoteBatchTask", "Input queue " + inputKey + "is finished and removed from workspace");
+
                         break;
                     }
 

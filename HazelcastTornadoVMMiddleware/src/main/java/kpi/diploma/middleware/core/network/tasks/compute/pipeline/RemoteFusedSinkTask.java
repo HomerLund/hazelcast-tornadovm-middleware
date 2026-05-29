@@ -3,6 +3,7 @@ package kpi.diploma.middleware.core.network.tasks.compute.pipeline;
 import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.function.PipelineSink;
 import kpi.diploma.middleware.core.function.SerializableFunction;
+import kpi.diploma.middleware.core.logging.Logger;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -42,6 +43,9 @@ public class RemoteFusedSinkTask<I, O, R> implements Callable<R>, Serializable {
 
                 if (item == null) {
                     if (NodeLocalWorkspace.inQueueFinished(inputKey) && inQueue.isEmpty()) {
+                        NodeLocalWorkspace.remove(inputKey);
+                        Logger.info("RemoteFusedSinkTask", "Input queue " + inputKey + "is finished and removed from workspace");
+
                         break;
                     }
 

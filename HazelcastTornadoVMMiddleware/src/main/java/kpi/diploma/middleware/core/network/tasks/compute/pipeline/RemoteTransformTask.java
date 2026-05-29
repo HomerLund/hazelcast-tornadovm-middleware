@@ -50,6 +50,9 @@ public class RemoteTransformTask<I, O> implements Callable<Void>, Serializable {
 
                 if (item == null) {
                     if (NodeLocalWorkspace.inQueueFinished(inputKey) && inQueue.isEmpty()) {
+                        NodeLocalWorkspace.remove(inputKey);
+                        Logger.info("RemoteTransformTask", "Input queue " + inputKey + "is finished and removed from workspace");
+
                         break;
                     }
 

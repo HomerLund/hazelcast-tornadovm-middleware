@@ -2,6 +2,7 @@ package kpi.diploma.middleware.core.network.tasks.compute.pipeline;
 
 import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.function.SerializableConsumer;
+import kpi.diploma.middleware.core.logging.Logger;
 import kpi.diploma.middleware.core.network.MiddlewareConstants;
 
 import java.io.Serial;
@@ -42,6 +43,9 @@ public class RemoteConsumeTask<I> implements Callable<Void>, Serializable {
 
                 if (item == null) {
                     if (NodeLocalWorkspace.inQueueFinished(inputKey) && inQueue.isEmpty()) {
+                        NodeLocalWorkspace.remove(inputKey);
+                        Logger.info("RemoteConsumeTask", "Input queue " + inputKey + "is finished and removed from workspace");
+
                         break;
                     }
 

@@ -3,6 +3,7 @@ package kpi.diploma.middleware.core.network.tasks.compute.pipeline;
 import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.function.SerializableBiFunction;
 import kpi.diploma.middleware.core.function.SerializableFunction;
+import kpi.diploma.middleware.core.logging.Logger;
 import kpi.diploma.middleware.core.network.MiddlewareConstants;
 
 import java.io.Serial;
@@ -55,6 +56,9 @@ public class RemoteBroadcastTransformTask<I, B, O> implements Callable<Void>, Se
 
                 if (item == null){
                     if (NodeLocalWorkspace.inQueueFinished(inputKey) && inQueue.isEmpty()){
+                        NodeLocalWorkspace.remove(inputKey);
+                        Logger.info("RemoteBroadcastTransformTask", "Input queue " + inputKey + "is finished and removed from workspace");
+
                         break;
                     }
                     continue;
