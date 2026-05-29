@@ -2,18 +2,29 @@ package kpi.diploma.userprojects.facerecognition.model.loss;
 
 import kpi.diploma.userprojects.facerecognition.model.math.LossMath;
 
+import java.util.Arrays;
+
 public class BinaryCrossEntropy implements LossFunction{
+    private int maxCapacity = 0;
     private int currentLength = 0;
+
     private float[] gradientBuffer;
 
     @Override
     public float[] calculateDerivative(float[] prediction, float[] target){
-        if (currentLength != prediction.length){
-            currentLength = prediction.length;
-            gradientBuffer = new float[prediction.length];
+        this.currentLength = prediction.length;
+        if (prediction.length > maxCapacity){
+            this.maxCapacity = prediction.length;
+            this.gradientBuffer = new float[maxCapacity];
         }
 
         LossMath.bceDerivative(prediction, target, gradientBuffer, currentLength);
-        return gradientBuffer;
+
+        if (currentLength == maxCapacity) {
+            return gradientBuffer;
+        }
+        else{
+            return Arrays.copyOf(gradientBuffer, currentLength);
+        }
     }
 }
