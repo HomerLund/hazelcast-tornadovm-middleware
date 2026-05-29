@@ -50,7 +50,7 @@ public class LinearAlgebra {
             for (int in = 0; in < inputSize; in++) {
                  float weightSum = 0;
                 for (int b = 0; b < batchSize; b++) {
-                    weightSum += batchOutputGradient[b * outputSize + out] * batchInputGradient[b * inputSize + in];
+                    weightSum += batchOutputGradient[b * outputSize + out] * batchInputCache[b * inputSize + in];
                 }
                 weightGradients[out * inputSize + in] = weightSum / batchSize;
             }
