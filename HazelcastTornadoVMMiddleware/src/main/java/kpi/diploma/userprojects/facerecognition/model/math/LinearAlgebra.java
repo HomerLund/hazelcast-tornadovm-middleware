@@ -40,18 +40,19 @@ public class LinearAlgebra {
             float[] weightGradients, float[] biasGradients, float[] batchInputGradient
     )
     {
-        for (int b = 0; b < batchSize; b++) {
-            int inputOffset = b * inputSize;
-            int outputOffset = b * outputSize;
+        for (int out = 0; out < outputSize; out++){
+            float biasSum = 0;
+            for (int b = 0; b < batchSize; b++) {
+                biasSum += batchOutputGradient[b * outputSize + out];
+            }
+            biasGradients[out] = biasSum / batchSize;
 
-            for (int out = 0; out < outputSize; out++) {
-                float gradientOut = batchOutputGradient[out + outputOffset];
-                biasGradients[out + outputOffset] = gradientOut;
-
-                for (int in = 0; in < inputSize; in++) {
-                    int weightIndex = (b * outputSize * inputSize) + (out * inputSize) + in;
-                    weightGradients[weightIndex] = gradientOut * batchInputCache[in + inputOffset];
+            for (int in = 0; in < inputSize; in++) {
+                 float weightSum = 0;
+                for (int b = 0; b < batchSize; b++) {
+                    weightSum += batchOutputGradient[b * outputSize + out] * batchInputGradient[b * inputSize + in];
                 }
+                weightGradients[out * inputSize + in] = weightSum / batchSize;
             }
         }
 
@@ -61,11 +62,9 @@ public class LinearAlgebra {
 
             for (int in = 0; in < inputSize; in++) {
                 float sum = 0;
-
                 for (int out = 0; out < outputSize; out++) {
                     sum += batchOutputGradient[out + outputOffset] * weights[out * inputSize + in];
                 }
-
                 batchInputGradient[in + inputOffset] = sum;
             }
         }
