@@ -1,10 +1,8 @@
 package kpi.diploma.middleware.client.api.pipeline.compute;
 
+import kpi.diploma.middleware.client.api.context.GpuContext;
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
-import kpi.diploma.middleware.core.function.PipelineSink;
-import kpi.diploma.middleware.core.function.SerializableBiFunction;
-import kpi.diploma.middleware.core.function.SerializableConsumer;
-import kpi.diploma.middleware.core.function.SerializableFunction;
+import kpi.diploma.middleware.core.function.*;
 import kpi.diploma.middleware.core.network.tasks.compute.pipeline.*;
 
 import java.util.ArrayList;
@@ -63,6 +61,26 @@ public class DataflowJobBuilder<I, O> {
     public <B, NEW_O> DataflowJobBuilder<I, NEW_O> mapWithBroadcast(String broadcastKey, Class<B> broadcastType , SerializableBiFunction<O, B, NEW_O> step){
         if (currentTargetPoolName == null){
             throw new IllegalStateException("Call routeTo() before mapWithBroadcast()");
+        }
+
+        String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
+
+        RemoteBroadcastTransformTask<O, B, NEW_O> task = new RemoteBroadcastTransformTask<>(currentInputKey, nextChannelKey, broadcastKey, step, currentParallelism);
+
+        pipelineJobs.add(new ComputeJob.Builder<Void>()
+                .poolName(currentTargetPoolName)
+                .task(task)
+                .parallelism(currentParallelism)
+                .build());
+
+        currentInputKey = nextChannelKey;
+
+        return (DataflowJobBuilder<I, NEW_O>)  this;
+    }
+
+    public <B, NEW_O> DataflowJobBuilder<I, NEW_O> mapWithGpuBroadcast(String broadcastKey, Class<B> broadcastType , SerializableTriFunction<O, B, GpuContext, NEW_O> step){
+        if (currentTargetPoolName == null){
+            throw new IllegalStateException("Call routeTo() before mapWithGpuBroadcast()");
         }
 
         String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
