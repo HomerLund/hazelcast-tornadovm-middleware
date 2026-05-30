@@ -1,5 +1,6 @@
 package kpi.diploma.userprojects.facerecognition.model.layers;
 
+import kpi.diploma.middleware.client.api.gpu.GpuMemory;
 import kpi.diploma.userprojects.facerecognition.model.math.Activations;
 
 import java.util.Arrays;
@@ -8,7 +9,10 @@ public class SigmoidLayer implements Layer{
     private int maxCapacity = 0;
     private int currentLength = 0;
 
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] outputCache;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] inputGradient;
 
     private void ensureCapacity(int length){

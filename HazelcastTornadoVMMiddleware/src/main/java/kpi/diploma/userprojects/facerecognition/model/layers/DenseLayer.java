@@ -1,5 +1,6 @@
 package kpi.diploma.userprojects.facerecognition.model.layers;
 
+import kpi.diploma.middleware.client.api.gpu.GpuMemory;
 import kpi.diploma.userprojects.facerecognition.model.math.LinearAlgebra;
 
 import java.util.Arrays;
@@ -9,18 +10,30 @@ public class DenseLayer implements Layer{
     private final int inputSize;
     private final int outputSize;
 
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private final float[] weights;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private final float[] biases;
 
+    @GpuMemory(mode = GpuMemory.TransferMode.EVER_EXECUTION)
     private final float[] finalWeightGradients;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.EVER_EXECUTION)
     private final float[] finalBiasGradients;
 
     private int maxBatchCapacity = 0;
     private int currentBatchSize = 0;
 
     private float[] inputCache;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] wXBuffer;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] outputCache;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] inputGradient;
 
     public DenseLayer(int inputSize, int outputSize){

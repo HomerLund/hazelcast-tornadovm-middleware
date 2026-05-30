@@ -1,5 +1,6 @@
 package kpi.diploma.userprojects.facerecognition.model.layers;
 
+import kpi.diploma.middleware.client.api.gpu.GpuMemory;
 import kpi.diploma.userprojects.facerecognition.model.math.Activations;
 import kpi.diploma.userprojects.facerecognition.model.math.LinearAlgebra;
 
@@ -11,7 +12,11 @@ public class ReLULayer implements Layer{
     private int currentLength = 0;
 
     private float[] inputCache;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] outputCache;
+
+    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] inputGradient;
 
     private void ensureCapacity(int length){

@@ -1,17 +1,21 @@
 package kpi.diploma.userprojects.facerecognition.model.math;
 
+import kpi.diploma.middleware.client.api.gpu.GpuKernel;
+import kpi.diploma.middleware.client.api.gpu.GpuParallel;
+
 public class LinearAlgebra {
+    @GpuKernel(name = "forwardBatch")
     public static void forwardBatch(
             float[] weights, int outputSize, int inputSize,
             float[] batchInput, int batchSize,
             float[] batchOutput
     )
     {
-        for (int b = 0; b < batchSize; b++) {
+        for (@GpuParallel int b = 0; b < batchSize; b++) {
             int inputOffset = b * inputSize;
             int outputOffset = b * outputSize;
 
-            for (int out = 0; out < outputSize; out++) {
+            for (@GpuParallel int out = 0; out < outputSize; out++) {
                 float sum = 0;
                 for (int in = 0; in < inputSize; in++) {
                     sum += weights[out * inputSize + in] * batchInput[in + inputOffset];
@@ -21,34 +25,36 @@ public class LinearAlgebra {
         }
     }
 
+    @GpuKernel(name = "addBiasesBatch")
     public static void addBiasesBatch(
             float[] batchInput, float[] biases, float[] batchOutput,
             int batchSize, int outputSize
     )
     {
-        for (int b = 0; b < batchSize; b++) {
+        for (@GpuParallel int b = 0; b < batchSize; b++) {
             int offset = b * outputSize;
-            for (int i = 0; i < outputSize; i++) {
+            for (@GpuParallel int i = 0; i < outputSize; i++) {
                 batchOutput[i + offset] = batchInput[offset + i] + biases[i];
             }
         }
     }
 
+    @GpuKernel(name = "backwardBatch")
     public static void backwardBatch(
             float[] weights, int outputSize, int inputSize,
             float[] batchInputCache, float[] batchOutputGradient, int batchSize,
             float[] weightGradients, float[] biasGradients, float[] batchInputGradient
     )
     {
-        for (int out = 0; out < outputSize; out++){
+        for (@GpuParallel int out = 0; out < outputSize; out++){
             float biasSum = 0;
             for (int b = 0; b < batchSize; b++) {
                 biasSum += batchOutputGradient[b * outputSize + out];
             }
             biasGradients[out] = biasSum / batchSize;
 
-            for (int in = 0; in < inputSize; in++) {
-                 float weightSum = 0;
+            for (@GpuParallel int in = 0; in < inputSize; in++) {
+                float weightSum = 0;
                 for (int b = 0; b < batchSize; b++) {
                     weightSum += batchOutputGradient[b * outputSize + out] * batchInputCache[b * inputSize + in];
                 }
@@ -56,11 +62,11 @@ public class LinearAlgebra {
             }
         }
 
-        for (int b = 0; b < batchSize; b++) {
+        for (@GpuParallel int b = 0; b < batchSize; b++) {
             int inputOffset = b * inputSize;
             int outputOffset = b * outputSize;
 
-            for (int in = 0; in < inputSize; in++) {
+            for (@GpuParallel int in = 0; in < inputSize; in++) {
                 float sum = 0;
                 for (int out = 0; out < outputSize; out++) {
                     sum += batchOutputGradient[out + outputOffset] * weights[out * inputSize + in];
