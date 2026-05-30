@@ -12,14 +12,14 @@ import java.util.function.Supplier;
 
 public class ServerGpuContext implements GpuContext {
     private final HardwareAccelerator accelerator;
-    private ComputePlan cachedPlan = null;
 
     public ServerGpuContext(HardwareAccelerator accelerator){
         this.accelerator = accelerator;
     }
 
     @Override
-    public <T> T executeOnGpu(String cacheKey, Supplier<T> gpuLogic) {
+    public <T> T executeOnGpu(String cacheKey, Object memoryContext, Supplier<T> gpuLogic) {
+        ComputePlan cachedPlan = NodeLocalWorkspace.get(cacheKey);
         if (cachedPlan == null){
             Logger.info("ServerGpuContext", "Graph not found. Starting JIT tracing for the key: " + cacheKey);
             ComputeGraph graph = accelerator.createGraph("dynamic_plan_" + System.nanoTime());
@@ -29,6 +29,18 @@ public class ServerGpuContext implements GpuContext {
             gpuLogic.get();
 
             GpuKernelInterceptor.stopTracing();
+
+            if (memoryContext != null){
+                GpuMemoryExtractor.ExtractGpuBuffers buffers = GpuMemoryExtractor.extractAnnotationBuffers(memoryContext);
+
+                if (buffers.onceBuffers().length > 0){
+                    graph.allocateOnDevice(buffers.onceBuffers());
+                }
+
+                if (buffers.everExecutionBuffers().length > 0){
+                    graph.copyToDevice(buffers.everExecutionBuffers());
+                }
+            }
 
             cachedPlan = graph.compile();
 
