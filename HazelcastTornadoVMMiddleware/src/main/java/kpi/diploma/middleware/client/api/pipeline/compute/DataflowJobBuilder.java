@@ -85,7 +85,7 @@ public class DataflowJobBuilder<I, O> {
 
         String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
 
-        RemoteBroadcastTransformTask<O, B, NEW_O> task = new RemoteBroadcastTransformTask<>(currentInputKey, nextChannelKey, broadcastKey, step, currentParallelism);
+        RemoteGpuBroadcastTask<O, B, NEW_O> task = new RemoteGpuBroadcastTask<>(currentInputKey, nextChannelKey, broadcastKey, step, currentParallelism);
 
         pipelineJobs.add(new ComputeJob.Builder<Void>()
                 .poolName(currentTargetPoolName)
