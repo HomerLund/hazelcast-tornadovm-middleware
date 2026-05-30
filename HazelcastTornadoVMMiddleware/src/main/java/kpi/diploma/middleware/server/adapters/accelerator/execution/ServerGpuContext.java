@@ -24,12 +24,6 @@ public class ServerGpuContext implements GpuContext {
             Logger.info("ServerGpuContext", "Graph not found. Starting JIT tracing for the key: " + cacheKey);
             ComputeGraph graph = accelerator.createGraph("dynamic_plan_" + System.nanoTime());
 
-            GpuKernelInterceptor.startTracing(graph);
-
-            gpuLogic.get();
-
-            GpuKernelInterceptor.stopTracing();
-
             if (memoryContext != null){
                 GpuMemoryExtractor.ExtractGpuBuffers buffers = GpuMemoryExtractor.extractAnnotationBuffers(memoryContext);
 
@@ -41,6 +35,12 @@ public class ServerGpuContext implements GpuContext {
                     graph.copyToDevice(buffers.everExecutionBuffers());
                 }
             }
+
+            GpuKernelInterceptor.startTracing(graph);
+
+            gpuLogic.get();
+
+            GpuKernelInterceptor.stopTracing();
 
             cachedPlan = graph.compile();
 
