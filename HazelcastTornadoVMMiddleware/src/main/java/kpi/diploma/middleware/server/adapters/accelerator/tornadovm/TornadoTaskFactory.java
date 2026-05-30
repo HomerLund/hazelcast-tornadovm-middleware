@@ -1,12 +1,11 @@
 package kpi.diploma.middleware.server.adapters.accelerator.tornadovm;
 
-import net.bytebuddy.ByteBuddy;
-import net.bytebuddy.implementation.MethodCall;
-import net.bytebuddy.matcher.ElementMatcher;
-import net.bytebuddy.matcher.ElementMatchers;
+import kpi.diploma.middleware.core.logging.Logger;
 import uk.ac.manchester.tornado.api.common.TornadoFunctions;
 
+import java.lang.invoke.*;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,21 +19,42 @@ public class TornadoTaskFactory {
 
                 Class<?> taskInterface = determineTornadoInterface(argsCount);
 
+                Method pureMethod = extractPureMethod(m);
+                pureMethod.setAccessible(true);
 
-                return new ByteBuddy()
-                        .subclass(taskInterface)
-                        .method(ElementMatchers.named("run"))
-                        .intercept(MethodCall.invoke(m).withAllArguments())
-                        .make()
-                        .load(targetMethod.getDeclaringClass().getClassLoader())
-                        .getLoaded()
-                        .getDeclaredConstructor()
-                        .newInstance();
+                MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(m.getDeclaringClass(), MethodHandles.lookup());
+                MethodHandle targetHandle = lookup.unreflect(pureMethod);
+
+                MethodType invokedType = MethodType.methodType(taskInterface);
+
+                Class<?>[] interfaceArgs = new Class<?>[argsCount];
+                Arrays.fill(interfaceArgs, Object.class);
+                MethodType samMethodType = MethodType.methodType(void.class, interfaceArgs);
+
+                MethodType instantiatedMethodType = targetHandle.type().wrap().changeReturnType(void.class);
+
+                CallSite callSite = LambdaMetafactory.altMetafactory(lookup, "apply", invokedType, samMethodType, targetHandle, instantiatedMethodType, LambdaMetafactory.FLAG_SERIALIZABLE);
+                return callSite.getTarget().invoke();
             }
-            catch (Exception e){
-                throw new RuntimeException("Task generation error for TornadoVM", e);
+            catch (Throwable t){
+                throw new RuntimeException("Task generation error for TornadoVM", t);
             }
         });
+    }
+
+    private static Method extractPureMethod(Method instrumentedMethod){
+        Class<?> clazz = instrumentedMethod.getDeclaringClass();
+        String originalName = instrumentedMethod.getName();
+        Class<?>[] paramTypes = instrumentedMethod.getParameterTypes();
+
+        for (Method m : clazz.getDeclaredMethods()){
+            if (m.getName().startsWith(originalName + "$") && Arrays.equals(m.getParameterTypes(), paramTypes)){
+                Logger.info("TornadoTaskFactory", "Found Pure method: " + m.getName());
+                return m;
+            }
+        }
+
+        return instrumentedMethod;
     }
 
     private static Class<?> determineTornadoInterface(int count){
