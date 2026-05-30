@@ -1,7 +1,9 @@
 package kpi.diploma.middleware.server.bootstrap.accelerator.instrumentation;
 
+import com.hazelcast.cp.internal.raft.impl.log.LogEntry;
 import kpi.diploma.middleware.client.api.gpu.GpuKernel;
 import kpi.diploma.middleware.client.api.gpu.GpuParallel;
+import kpi.diploma.middleware.core.logging.Logger;
 import net.bytebuddy.agent.ByteBuddyAgent;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.AsmVisitorWrapper;
@@ -23,11 +25,15 @@ public class ByteBuddyAgentInstaller {
 
             new AgentBuilder.Default()
                     .type(ElementMatchers.declaresMethod(ElementMatchers.isAnnotatedWith(GpuKernel.class)))
-                    .transform(((builder, typeDescription, classLoader, module, protectionDomain) -> builder
-                            .method(ElementMatchers.isAnnotatedWith(GpuKernel.class))
-                            .intercept(MethodDelegation.to(GpuKernelInterceptor.class))
-                            .visit(new AsmVisitorWrapper.ForDeclaredMethods()
-                                    .method(ElementMatchers.isAnnotatedWith(GpuKernel.class), annotationRemapper)))
+                    .transform(((builder, typeDescription, classLoader, module, protectionDomain) ->
+                            {
+                                Logger.info("ByteBuddyAgentInstaller", "ByteBuddy caught a class during caching: " + typeDescription.getName());
+                                return builder
+                                        .method(ElementMatchers.isAnnotatedWith(GpuKernel.class))
+                                        .intercept(MethodDelegation.to(GpuKernelInterceptor.class))
+                                        .visit(new AsmVisitorWrapper.ForDeclaredMethods()
+                                                .method(ElementMatchers.isAnnotatedWith(GpuKernel.class), annotationRemapper));
+                            })
                     )
                     .installOnByteBuddyAgent();
 
