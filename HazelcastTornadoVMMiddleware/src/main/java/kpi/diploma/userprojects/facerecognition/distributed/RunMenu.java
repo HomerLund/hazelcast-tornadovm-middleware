@@ -214,7 +214,7 @@ public class RunMenu {
                             .routeTo("cpu-batcher")
                             .asBatch(32)
                             .routeTo("gpu-manager")
-                            .mapWithBroadcast(networkCacheKey, NeuralNetwork.class , (batch, localNetwork) -> {
+                            .mapWithGpuBroadcast(networkCacheKey, NeuralNetwork.class , (batch, localNetwork, gpuContext) -> {
                                 int currentBatchSize = batch.size();
 
                                 int inputSize = batch.get(0).features().length;
@@ -229,10 +229,12 @@ public class RunMenu {
                                     System.arraycopy(item.label(), 0, flattenedLabels, i * labelSize, labelSize);
                                 }
 
-                                float[] predictions = localNetwork.forward(flattenedInputs);
-
-                                localNetwork.backward(predictions, flattenedLabels);
-                                localNetwork.updateWeights(learningRate);
+                                float[] predictions = gpuContext.executeOnGpu("forward_backward", localNetwork, () -> {
+                                    float[] p = localNetwork.forward(flattenedInputs);
+                                    localNetwork.backward(p, flattenedLabels);
+                                    localNetwork.updateWeights(learningRate);
+                                    return p;
+                                });
 
                                 double batchTotalLoss = 0.0;
                                 int correctCount = 0;
