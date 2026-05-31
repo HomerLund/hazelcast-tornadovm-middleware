@@ -19,20 +19,19 @@ import net.bytebuddy.pool.TypePool;
 
 public class ByteBuddyAgentInstaller {
 
-    public static void install(AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper annotationRemapper) {
+    public static void install() {
         try {
             ByteBuddyAgent.install();
 
             new AgentBuilder.Default()
-                    .type(ElementMatchers.declaresMethod(ElementMatchers.isAnnotatedWith(GpuKernel.class)))
+                    .type(ElementMatchers.declaresMethod(ElementMatchers.isAnnotatedWith(GpuKernel.class))
+                            .and(ElementMatchers.not(ElementMatchers.nameEndsWith("_TornadoPure"))))
                     .transform(((builder, typeDescription, classLoader, module, protectionDomain) ->
                             {
                                 Logger.info("ByteBuddyAgentInstaller", "ByteBuddy caught a class during caching: " + typeDescription.getName());
                                 return builder
                                         .method(ElementMatchers.isAnnotatedWith(GpuKernel.class))
-                                        .intercept(MethodDelegation.to(GpuKernelInterceptor.class))
-                                        .visit(new AsmVisitorWrapper.ForDeclaredMethods()
-                                                .method(ElementMatchers.isAnnotatedWith(GpuKernel.class), annotationRemapper));
+                                        .intercept(MethodDelegation.to(GpuKernelInterceptor.class));
                             })
                     )
                     .installOnByteBuddyAgent();
