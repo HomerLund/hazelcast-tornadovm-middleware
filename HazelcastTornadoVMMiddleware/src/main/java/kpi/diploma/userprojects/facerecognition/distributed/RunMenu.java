@@ -1,5 +1,6 @@
 package kpi.diploma.userprojects.facerecognition.distributed;
 
+import kpi.diploma.middleware.client.api.context.GpuContext;
 import kpi.diploma.middleware.client.api.pipeline.cashe.CacheJobBuilder;
 import kpi.diploma.middleware.client.api.context.ClusterContext;
 import kpi.diploma.middleware.client.api.pipeline.compute.DataflowJobBuilder;
@@ -7,8 +8,8 @@ import kpi.diploma.middleware.client.hazelcast.HazelcastClusterProvider;
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.CacheJob;
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.client.orchestration.distribution.DistributionJob;
-import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.function.PipelineSink;
+import kpi.diploma.middleware.core.function.SerializableTriFunction;
 import kpi.diploma.middleware.core.logging.Logger;
 import kpi.diploma.middleware.view.menu.builders.ResearchConsoleBuilder;
 import kpi.diploma.userprojects.facerecognition.data.preparation.share.ImageDatasetPartitioner;
@@ -19,7 +20,6 @@ import kpi.diploma.userprojects.facerecognition.data.runtime.processors.TensorIt
 import kpi.diploma.userprojects.facerecognition.data.runtime.processors.ToTensorProcessor;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetSplitReader;
-import kpi.diploma.userprojects.facerecognition.local.EpochMetrics;
 import kpi.diploma.userprojects.facerecognition.model.core.NeuralNetwork;
 import kpi.diploma.userprojects.facerecognition.model.layers.DenseLayer;
 import kpi.diploma.userprojects.facerecognition.model.layers.ReLULayer;
@@ -213,51 +213,85 @@ public class RunMenu {
                             })
                             .routeTo("cpu-batcher")
                             .asBatch(32)
-                            .routeTo("gpu-manager")
-                            .mapWithGpuBroadcast(networkCacheKey, NeuralNetwork.class , (batch, localNetwork, gpuContext) -> {
-                                int currentBatchSize = batch.size();
+                            //.routeTo("gpu-manager")
+                           // .map(new SerializableFunction<List<TensorItem>, GpuBatch>() {
+                           //     private transient float[] cachedInputs;
+                           //     private transient float[] cachedLabels;
 
-                                int inputSize = batch.get(0).features().length;
-                                int labelSize = batch.get(0).label().length;
+                             //   @Override
+                            //    public GpuBatch apply(List<TensorItem> batch){
+                            //        int currentBatchSize = batch.size();
 
-                                float[] flattenedInputs = new float[currentBatchSize * inputSize];
-                                float[] flattenedLabels = new float[currentBatchSize * labelSize];
+                            //        int inputSize = batch.get(0).features().length;
+                            //        int labelSize = batch.get(0).label().length;
 
-                                for (int i = 0; i < currentBatchSize; i++) {
-                                    TensorItem item = batch.get(i);
-                                    System.arraycopy(item.features(), 0, flattenedInputs, i * inputSize, inputSize);
-                                    System.arraycopy(item.label(), 0, flattenedLabels, i * labelSize, labelSize);
-                                }
+                            //        if (cachedInputs == null) {
+                            //            cachedInputs = new float[currentBatchSize * inputSize];
+                            //            cachedLabels = new float[currentBatchSize * labelSize];
+                            //        }
 
-                                float[] predictions = gpuContext.executeOnGpu("forward_backward", localNetwork, () -> {
-                                    float[] p = localNetwork.forward(flattenedInputs);
-                                    localNetwork.backward(p, flattenedLabels);
-                                    localNetwork.updateWeights(learningRate);
-                                    return p;
-                                });
+                           //         for (int i = 0; i < currentBatchSize; i++) {
+                           //             TensorItem item = batch.get(i);
+                           //             System.arraycopy(item.features(), 0, cachedInputs, i * inputSize, inputSize);
+                           //             System.arraycopy(item.label(), 0, cachedLabels, i * labelSize, labelSize);
+                           //         }
 
-                                double batchTotalLoss = 0.0;
-                                int correctCount = 0;
+                           //         return new GpuBatch(currentBatchSize, cachedInputs, cachedLabels);
+                           //     }
+                           // })
+                            .routeTo("gpu-manage")
+                            .mapWithGpuBroadcast(networkCacheKey, NeuralNetwork.class, new SerializableTriFunction<List<TensorItem>, NeuralNetwork, GpuContext, EpochResult>() {
+                                private transient float[] flattenedInputs;
+                                private transient float[] flattenedLabels;
 
-                                for (int i = 0; i < currentBatchSize; i++) {
-                                    float prediction = predictions[i];
-                                    float label = flattenedLabels[i];
+                                @Override
+                                public EpochResult apply(List<TensorItem> batch, NeuralNetwork localNetwork, GpuContext gpuContext) {
+                                    int currentBatchSize = batch.size();
 
-                                    float p = Math.max(1e-7f, Math.min(1.0f - 1e-7f, prediction));
-                                    batchTotalLoss += -(label * Math.log(p) + (1 - label) * Math.log(1 - p));
+                                    int inputSize = batch.get(0).features().length;
+                                    int labelSize = batch.get(0).label().length;
 
-                                    boolean isPredicatedPositive = prediction >= 0.5f;
-                                    boolean isActualPositive = label == 1.0f;
-
-                                    if (isPredicatedPositive == isActualPositive){
-                                        correctCount++;
+                                    if (flattenedInputs == null) {
+                                        flattenedInputs = new float[currentBatchSize * inputSize];
+                                        flattenedLabels = new float[currentBatchSize * labelSize];
                                     }
-                                }
 
-                                return new EpochResult(
-                                        batchTotalLoss / currentBatchSize,
-                                        ((double) correctCount / currentBatchSize) * 100
-                                );
+                                    for (int i = 0; i < currentBatchSize; i++) {
+                                         TensorItem item = batch.get(i);
+                                         System.arraycopy(item.features(), 0, flattenedInputs, i * inputSize, inputSize);
+                                         System.arraycopy(item.label(), 0, flattenedLabels, i * labelSize, labelSize);
+                                    }
+
+                                    float[] predictions = gpuContext.executeOnGpu("forward_backward", localNetwork, () -> {
+                                        float[] p = localNetwork.forward(flattenedInputs);
+                                        localNetwork.backward(p, flattenedLabels);
+                                        localNetwork.updateWeights(learningRate);
+                                        return p;
+                                    });
+
+                                    double batchTotalLoss = 0.0;
+                                    int correctCount = 0;
+
+                                    for (int i = 0; i < currentBatchSize; i++) {
+                                        float prediction = predictions[i];
+                                        float label = flattenedLabels[i];
+
+                                        float p = Math.max(1e-7f, Math.min(1.0f - 1e-7f, prediction));
+                                        batchTotalLoss += -(label * Math.log(p) + (1 - label) * Math.log(1 - p));
+
+                                        boolean isPredicatedPositive = prediction >= 0.5f;
+                                        boolean isActualPositive = label == 1.0f;
+
+                                        if (isPredicatedPositive == isActualPositive){
+                                            correctCount++;
+                                        }
+                                    }
+
+                                    return new EpochResult(
+                                            batchTotalLoss / currentBatchSize,
+                                            ((double) correctCount / currentBatchSize) * 100
+                                    );
+                                }
                             })
                             .routeTo("cpu-aggregator")
                             .sink(new PipelineSink<EpochResult, EpochResult>() {
@@ -302,5 +336,11 @@ public class RunMenu {
     public record EpochResult (
             double loss,
             double accuracy
+    ) implements Serializable {}
+
+    public record GpuBatch(
+            int currentBatchSize,
+            float[] flattenedInputs,
+            float[] flattenedLabels
     ) implements Serializable {}
 }
