@@ -35,8 +35,7 @@ public class WorkerApplication {
     public static void run(String propertiesFilePath){
         System.out.println("Starting worker...");
 
-        AsmVisitorWrapper.ForDeclaredMethods.MethodVisitorWrapper annotationRemapper = new TornadoVMAnnotationRemapper();
-        ByteBuddyAgentInstaller.install(annotationRemapper);
+        ByteBuddyAgentInstaller.install();
 
         try{
             HardwareAccelerator accelerator = new TornadoVMAccelerator();
