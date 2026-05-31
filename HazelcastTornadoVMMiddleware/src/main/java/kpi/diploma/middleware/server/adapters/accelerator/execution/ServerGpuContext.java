@@ -50,7 +50,11 @@ public class ServerGpuContext implements GpuContext {
 
         cachedPlan.execute();
 
-        return gpuLogic.get();
+        GpuKernelInterceptor.startBypassing();
+        T result = gpuLogic.get();
+        GpuKernelInterceptor.stopBypassing();
+
+        return result;
     }
 
 }
