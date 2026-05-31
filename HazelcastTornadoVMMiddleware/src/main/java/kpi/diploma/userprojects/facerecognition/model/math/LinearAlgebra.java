@@ -39,11 +39,11 @@ public class LinearAlgebra {
         }
     }
 
-    @GpuKernel(name = "backwardBatch")
-    public static void backwardBatch(
-            float[] weights, int outputSize, int inputSize,
+    @GpuKernel(name = "backwardWeightGradient")
+    public static void backwardWeightGradient(
+            int outputSize, int inputSize,
             float[] batchInputCache, float[] batchOutputGradient, int batchSize,
-            float[] weightGradients, float[] biasGradients, float[] batchInputGradient
+            float[] weightGradients, float[] biasGradients
     )
     {
         for (@GpuParallel int out = 0; out < outputSize; out++){
@@ -61,7 +61,14 @@ public class LinearAlgebra {
                 weightGradients[out * inputSize + in] = weightSum / batchSize;
             }
         }
+    }
 
+    @GpuKernel(name = "backwardInputGradient")
+    public static void backwardInputGradient(
+            float[] weights, int outputSize, int inputSize,
+            float[] batchOutputGradient, int batchSize,
+            float[] batchInputGradient
+    ){
         for (@GpuParallel int b = 0; b < batchSize; b++) {
             int inputOffset = b * inputSize;
             int outputOffset = b * outputSize;
@@ -73,6 +80,13 @@ public class LinearAlgebra {
                 }
                 batchInputGradient[in + inputOffset] = sum;
             }
+        }
+    }
+
+    @GpuKernel(name = "updateWeights")
+    public static void updateWeights(float[] weights, float[] gradients, float learningRate){
+        for (@GpuParallel int i = 0; i < weights.length; i++) {
+            weights[i] -= learningRate * gradients[i];
         }
     }
 

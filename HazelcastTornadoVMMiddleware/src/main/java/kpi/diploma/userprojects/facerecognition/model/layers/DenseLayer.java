@@ -95,10 +95,16 @@ public class DenseLayer implements Layer{
 
     @Override
     public float[] backward(float[] outputGradient){
-        LinearAlgebra.backwardBatch(
-                weights, outputSize, inputSize,
+        LinearAlgebra.backwardWeightGradient(
+                outputSize, inputSize,
                 inputCache, outputGradient, currentBatchSize,
-                finalWeightGradients, finalBiasGradients, inputGradient
+                finalWeightGradients, finalBiasGradients
+        );
+
+        LinearAlgebra.backwardInputGradient(
+                weights, outputSize, inputSize,
+                outputGradient, currentBatchSize,
+                inputGradient
         );
 
         if (currentBatchSize == maxBatchCapacity) {
@@ -111,12 +117,7 @@ public class DenseLayer implements Layer{
 
     @Override
     public void updateWeights(float learningRate){
-        for (int i = 0; i < weights.length; i++) {
-            weights[i] -= learningRate * finalWeightGradients[i];
-        }
-
-        for (int i = 0; i < biases.length; i++) {
-            biases[i] -= learningRate * finalBiasGradients[i];
-        }
+        LinearAlgebra.updateWeights(weights, finalWeightGradients, learningRate);
+        LinearAlgebra.updateWeights(biases, finalBiasGradients, learningRate);
     }
  }
