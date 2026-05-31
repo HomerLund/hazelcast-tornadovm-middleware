@@ -19,11 +19,12 @@ public class TornadoTaskFactory {
 
                 Class<?> taskInterface = determineTornadoInterface(argsCount);
 
-                Method pureMethod = extractPureMethod(m);
-                pureMethod.setAccessible(true);
+                m.setAccessible(true);
 
-                MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(m.getDeclaringClass(), MethodHandles.lookup());
-                MethodHandle targetHandle = lookup.unreflect(pureMethod);
+                Method getLookupMethod = m.getDeclaringClass().getMethod("$getLookup");
+                MethodHandles.Lookup lookup = (MethodHandles.Lookup) getLookupMethod.invoke(null);
+
+                MethodHandle targetHandle = lookup.unreflect(m);
 
                 MethodType invokedType = MethodType.methodType(taskInterface);
 
