@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
 public class GpuKernelInterceptor {
     private static final ThreadLocal<ComputeGraph> currentGraph = new ThreadLocal<>();
     private static final ThreadLocal<Boolean> isTracing = ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Boolean> isBypassing = ThreadLocal.withInitial(() -> false);
 
     public static void startTracing(ComputeGraph graph){
         currentGraph.set(graph);
@@ -22,16 +23,27 @@ public class GpuKernelInterceptor {
         isTracing.set(false);
     }
 
+    public static void startBypassing(){
+        isBypassing.set(true);
+    }
+
+    public static void stopBypassing(){
+        isBypassing.set(false);
+    }
+
     @RuntimeType
     public static Object intercept(@AllArguments Object[] args, @Origin Method method) throws Exception{
         if (isTracing.get()){
             ComputeGraph graph = currentGraph.get();
             String kernelName = method.getAnnotation(GpuKernel.class).name();
             graph.addDynamicKernel(kernelName, method, args);
-
+            return null;
+        } else if (isBypassing.get()) {
             return null;
         }
-        return method.invoke(null, args);
+        else{
+            return method.invoke(null, args);
+        }
     }
 
 }
