@@ -3,17 +3,18 @@ package kpi.diploma.middleware.server.adapters.accelerator.tornadovm;
 import kpi.diploma.middleware.core.logging.Logger;
 import kpi.diploma.middleware.server.bootstrap.accelerator.ComputeGraph;
 import kpi.diploma.middleware.server.bootstrap.accelerator.ComputePlan;
-import org.apache.commons.math3.analysis.function.Log;
 import uk.ac.manchester.tornado.api.TaskGraph;
 import uk.ac.manchester.tornado.api.TornadoExecutionPlan;
 import uk.ac.manchester.tornado.api.common.TornadoFunctions;
 import uk.ac.manchester.tornado.api.enums.DataTransferMode;
 
 import java.lang.reflect.Method;
+import java.util.*;
 
 public class TornadoVMGraph implements ComputeGraph {
     private final TaskGraph tornadoTaskGraph;
     private int taskCounter = 0;
+    private final Set<Object> registeredMemory = Collections.newSetFromMap(new IdentityHashMap<>());
 
     public TornadoVMGraph(String name){
         this.tornadoTaskGraph = new TaskGraph(name);
@@ -21,13 +22,19 @@ public class TornadoVMGraph implements ComputeGraph {
 
     @Override
     public ComputeGraph allocateOnDevice(Object... memoryBuffers) {
-        tornadoTaskGraph.transferToDevice(DataTransferMode.FIRST_EXECUTION, memoryBuffers);
+        if (memoryBuffers.length > 0) {
+            Collections.addAll(registeredMemory, memoryBuffers);
+            tornadoTaskGraph.transferToDevice(DataTransferMode.FIRST_EXECUTION, memoryBuffers);
+        }
         return this;
     }
 
     @Override
     public ComputeGraph copyToDevice(Object... memoryBuffers) {
-        tornadoTaskGraph.transferToDevice(DataTransferMode.EVERY_EXECUTION, memoryBuffers);
+        if (memoryBuffers.length > 0) {
+            Collections.addAll(registeredMemory, memoryBuffers);
+            tornadoTaskGraph.transferToDevice(DataTransferMode.EVERY_EXECUTION, memoryBuffers);
+        }
         return this;
     }
 
@@ -37,12 +44,32 @@ public class TornadoVMGraph implements ComputeGraph {
         taskCounter++;
         String taskName = name + "_" + taskCounter;
 
+        List<Object> unregisteredArrays = new ArrayList<>();
+        for (Object arg : args){
+            if (arg != null && arg.getClass().isArray()){
+                if (!registeredMemory.contains(arg)){
+                    unregisteredArrays.add(arg);
+                    registeredMemory.add(arg);
+                }
+            }
+        }
+
+        if (!unregisteredArrays.isEmpty()){
+            Logger.info("TornadoVMGraph", "Auto-registering dynamic arrays for task: " + taskName);
+            Object[] dynamicMem = unregisteredArrays.toArray();
+
+            tornadoTaskGraph.transferToDevice(DataTransferMode.EVERY_EXECUTION, dynamicMem);
+            tornadoTaskGraph.transferToHost(DataTransferMode.EVERY_EXECUTION, dynamicMem);
+        }
+
         Logger.info("TornadoVMGraph", "Trying to create and add task: " + taskName);
 
         Object generatedTask;
 
         try{
-            generatedTask = TornadoTaskFactory.createTornadoTask(method);
+            Class<?> pureClass = TornadoPureClassInjector.getPureClass(method.getDeclaringClass());
+            Method pureMethod = pureClass.getMethod(method.getName(), method.getParameterTypes());
+            generatedTask = TornadoTaskFactory.createTornadoTask(pureMethod);
             Logger.info("TornadoVMGraph", "Task generated successfully. Class: " + generatedTask.getClass().getName());
         }
         catch (Throwable t){
