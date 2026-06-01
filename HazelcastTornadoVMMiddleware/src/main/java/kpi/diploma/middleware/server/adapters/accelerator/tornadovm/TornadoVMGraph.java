@@ -127,6 +127,7 @@ public class TornadoVMGraph implements ComputeGraph {
 
     @Override
     public ComputeGraph copyToHost(Object... memoryBuffers) {
+        Collections.addAll(registeredMemory, memoryBuffers);
         tornadoTaskGraph.transferToHost(DataTransferMode.EVERY_EXECUTION, memoryBuffers);
         return this;
     }
