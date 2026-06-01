@@ -27,6 +27,8 @@ public class ServerGpuContext implements GpuContext {
             if (memoryContext != null){
                 GpuMemoryExtractor.ExtractGpuBuffers buffers = GpuMemoryExtractor.extractAnnotationBuffers(memoryContext);
 
+                NodeLocalWorkspace.put(cacheKey + "_buffers", buffers);
+
                 if (buffers.onceBuffers().length > 0){
                     graph.allocateOnDevice(buffers.onceBuffers());
                 }
@@ -56,5 +58,22 @@ public class ServerGpuContext implements GpuContext {
 
         return result;
     }
+
+    @Override
+    public void syncToHost(String cacheKey) {
+        ComputePlan cachedPlan = NodeLocalWorkspace.get(cacheKey);
+        GpuMemoryExtractor.ExtractGpuBuffers buffers = NodeLocalWorkspace.get(cacheKey + "_buffers");
+
+        if (cachedPlan != null && buffers != null && buffers.onceBuffers().length > 0){
+            Logger.info("ServerGpuContext", "Forcing GPU to Host memory sync for ONCE buffers...");
+            cachedPlan.syncToHost(buffers.onceBuffers());
+            Logger.info("ServerGpuContext", "Buffers successfully synchronized to RAM");
+        }
+        else{
+            Logger.warn("ServerGpuContext", "Can not sync: Plan or buffers not found for key: " + cacheKey);
+        }
+    }
+
+
 
 }
