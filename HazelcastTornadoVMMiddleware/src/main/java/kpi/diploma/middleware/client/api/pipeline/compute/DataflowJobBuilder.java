@@ -187,6 +187,28 @@ public class DataflowJobBuilder<I, O> {
         return pipelineJobs;
     }
 
+
+    @SuppressWarnings("unchecked")
+    public <NEW_O> DataflowJobBuilder<Void, NEW_O> supply(SerializableFunction<GpuContext, NEW_O> supplier){
+        if (currentTargetPoolName == null){
+            throw new IllegalStateException("Call routeTo() before supply()");
+        }
+
+        String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
+
+        RemoteSupplyTask<NEW_O> task = new RemoteSupplyTask<>(nextChannelKey, supplier);
+
+        pipelineJobs.add(new ComputeJob.Builder<Void>()
+                .poolName(currentTargetPoolName)
+                .task(task)
+                .parallelism(currentParallelism)
+                .build());
+
+        currentInputKey = nextChannelKey;
+
+        return (DataflowJobBuilder<Void, NEW_O>)  this;
+    }
+
     private void buildAndAppendTransformTask(){
         String nextChannelKey = "channel_" + UUID.randomUUID().toString().substring(0,8);
         RemoteTransformTask<Object, Object> task = new RemoteTransformTask<>(currentInputKey, nextChannelKey, fusedLambda, currentParallelism);
