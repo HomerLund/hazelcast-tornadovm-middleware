@@ -8,6 +8,7 @@ import kpi.diploma.middleware.client.hazelcast.HazelcastClusterProvider;
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.CacheJob;
 import kpi.diploma.middleware.client.orchestration.pipeline.jobs.ComputeJob;
 import kpi.diploma.middleware.client.orchestration.distribution.DistributionJob;
+import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.function.PipelineSink;
 import kpi.diploma.middleware.core.function.SerializableTriFunction;
 import kpi.diploma.middleware.core.logging.Logger;
@@ -21,11 +22,14 @@ import kpi.diploma.userprojects.facerecognition.data.runtime.processors.ToTensor
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetSplitReader;
 import kpi.diploma.userprojects.facerecognition.model.core.NeuralNetwork;
+import kpi.diploma.userprojects.facerecognition.model.io.ModelSerializer;
 import kpi.diploma.userprojects.facerecognition.model.layers.DenseLayer;
 import kpi.diploma.userprojects.facerecognition.model.layers.ReLULayer;
 import kpi.diploma.userprojects.facerecognition.model.layers.SigmoidLayer;
 import kpi.diploma.userprojects.facerecognition.model.loss.BinaryCrossEntropy;
+import org.apache.commons.math3.analysis.function.Log;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
@@ -167,8 +171,8 @@ public class RunMenu {
         network.addLayer(new DenseLayer(128, 1));
         network.addLayer(new SigmoidLayer());
 
-        int epochs = 1;
-        float learningRate = 0.00001f;
+        int epochs = 20;
+        float learningRate = 0.001f;
         String targetLabel = "face";
 
         String networkCacheKey = "neural_network";
@@ -239,7 +243,7 @@ public class RunMenu {
                            //         return new GpuBatch(currentBatchSize, cachedInputs, cachedLabels);
                            //     }
                            // })
-                            .routeTo("gpu-manage")
+                            .routeTo("gpu-manager")
                             .mapWithGpuBroadcast(networkCacheKey, NeuralNetwork.class, new SerializableTriFunction<List<TensorItem>, NeuralNetwork, GpuContext, EpochResult>() {
                                 private transient float[] flattenedInputs;
                                 private transient float[] flattenedLabels;
@@ -251,9 +255,14 @@ public class RunMenu {
                                     int inputSize = batch.get(0).features().length;
                                     int labelSize = batch.get(0).label().length;
 
+                                    flattenedInputs = (float[]) NodeLocalWorkspace.get("flattenedInputs");
+                                    flattenedLabels = (float[]) NodeLocalWorkspace.get("flattenedLabels");
+
                                     if (flattenedInputs == null) {
                                         flattenedInputs = new float[currentBatchSize * inputSize];
                                         flattenedLabels = new float[currentBatchSize * labelSize];
+                                        NodeLocalWorkspace.put("flattenedInputs", flattenedInputs);
+                                        NodeLocalWorkspace.put("flattenedLabels", flattenedLabels);
                                     }
 
                                     for (int i = 0; i < currentBatchSize; i++) {
@@ -325,6 +334,44 @@ public class RunMenu {
         }
 
         Logger.success("Training", "Distributed Pipeline execution completed");
+
+        List<ComputeJob<?>> retrievalPipeline = DataflowJobBuilder.<List<DatasetItem>>sourceFromNodeCache("trainItems")
+                .routeTo("gpu-manager")
+                .supply(gpuContext -> {
+                        NeuralNetwork actualNetwork = (NeuralNetwork) NodeLocalWorkspace.get(networkCacheKey);
+
+                        if (actualNetwork == null){
+                            throw new RuntimeException("Network not fund");
+                        }
+
+                        gpuContext.syncToHost("forward_backward");
+
+                        return actualNetwork;
+                    }
+                )
+                .routeTo("cpu-aggregator")
+                .sink(new PipelineSink<NeuralNetwork, NeuralNetwork>() {
+                    private NeuralNetwork finalNetwork;
+
+                    @Override
+                    public void process(NeuralNetwork result) {
+                        finalNetwork = result;
+                    }
+
+                    @Override
+                    public NeuralNetwork getResult() {
+                        return finalNetwork;
+                    }
+                });
+
+        Map<String, NeuralNetwork> retrievalResults = context.getComputeManager().executeAndGatherResults(retrievalPipeline);
+        NeuralNetwork trainedNetwork = retrievalResults.values().iterator().next();
+
+        Logger.success("Training", "Trained model successfully retrieved");
+
+        String savePath = Paths.get("userprojects", "facerecognition", "assets", "weights", "face_recognition.model").toString();
+
+        ModelSerializer.saveModel(trainedNetwork, savePath);
     }
 
     public static void shutdownCluster(ClusterContext context){
