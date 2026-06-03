@@ -1,30 +1,71 @@
 package kpi.diploma.userprojects.facerecognition.app;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RunPrediction {
     public static void main(String[] args){
-        String modelPath = Paths.get("userprojects", "facerecognition", "assets", "weights", "face_recognition.model").toString();
-        String imageToTest = Paths.get("userprojects", "facerecognition", "assets", "dataset", "data", "raw", "Dataset", "0001.png").toString();
+        String modelDirectoryPath = Paths.get("userprojects", "facerecognition", "assets", "weights").toString();
+        String imageToTest = Paths.get("userprojects", "facerecognition", "assets", "dataset", "data", "raw", "Dataset", "Human1.png").toString();
 
-        ModelPredictor predictor = new ModelPredictor(modelPath);
+        System.out.println("File analysis: " + imageToTest);
+
+        File folder = new File(modelDirectoryPath);
+        File[] listOfFiles = folder.listFiles();
+        List<String> modelPaths = new ArrayList<>();
+
+        if (listOfFiles != null){
+            for (File file : listOfFiles){
+                if (file.isFile() && file.getName().startsWith("face_recognition_") && file.getName().endsWith(".model")){
+                    modelPaths.add(file.getAbsolutePath());
+                }
+            }
+        }
+
+        float totalProbability = 0.0f;
+        int activeModelsCount = 0;
+
+
 
         try{
-            float probability = predictor.predict(imageToTest);
+            for (String modelPath : modelPaths) {
+                File modelFile = new File(modelPath);
+                String modelName = modelFile.getName();
 
-            System.out.println("File analysis: " + imageToTest);
-            System.out.println("Probability of a face being present: " + probability);
+                ModelPredictor predictor = new ModelPredictor(modelPath);
 
-            if(probability >= 0.5f){
-                System.out.println("A human face was found in the photo");
-            }
-            else{
-                System.out.println("A human face was not found in the photo");
+                float probability = predictor.predict(imageToTest);
+
+                System.out.printf("Model [%s] analysis. Probability of a face being present: %.8f\n", modelName , probability);
+
+                totalProbability += probability;
+                activeModelsCount++;
+
+                if (probability >= 0.5f) {
+                    System.out.println("A human face was found in the photo");
+                } else {
+                    System.out.println("A human face was NOT found in the photo");
+                }
             }
         }
         catch (FileNotFoundException e){
             System.out.println("Error: " + e.getMessage());
+        }
+
+        if (activeModelsCount > 0){
+            float averageProbability = totalProbability / activeModelsCount;
+
+            System.out.printf("Average result (%d models combined):\n", activeModelsCount);
+            System.out.printf("Final probability: %.8f\n", averageProbability);
+
+            if (averageProbability >= 0.5f) {
+                System.out.println("A human face was found in the photo");
+            } else {
+                System.out.println("A human face was NOT found in the photo");
+            }
         }
     }
 }
