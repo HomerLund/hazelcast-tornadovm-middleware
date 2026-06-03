@@ -38,7 +38,10 @@ public class RemoteSupplyTask<O> implements Callable<Void>, Serializable {
             }
 
             O result = lambda.apply(gpuContext);
-            outQueue.put(result);
+
+            if (result != null){
+                outQueue.put(result);
+            }
 
             return null;
         }
