@@ -16,10 +16,10 @@ public class DenseLayer implements Layer{
     @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private final float[] biases;
 
-    @GpuMemory(mode = GpuMemory.TransferMode.EVER_EXECUTION)
+    @GpuMemory(mode = GpuMemory.TransferMode.EVERY_EXECUTION)
     private final float[] finalWeightGradients;
 
-    @GpuMemory(mode = GpuMemory.TransferMode.EVER_EXECUTION)
+    @GpuMemory(mode = GpuMemory.TransferMode.EVERY_EXECUTION)
     private final float[] finalBiasGradients;
 
     private int maxBatchCapacity = 0;
@@ -30,15 +30,16 @@ public class DenseLayer implements Layer{
     @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] wXBuffer;
 
-    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
+    @GpuMemory(mode = GpuMemory.TransferMode.EVERY_EXECUTION)
     private float[] outputCache;
 
     @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] inputGradient;
 
-    public DenseLayer(int inputSize, int outputSize){
+    public DenseLayer(int inputSize, int outputSize, int maxBatchCapacity){
         this.inputSize = inputSize;
         this.outputSize = outputSize;
+        this.maxBatchCapacity = maxBatchCapacity;
 
         this.weights = new float[outputSize * inputSize];
         this.biases = new float[outputSize];
@@ -46,17 +47,17 @@ public class DenseLayer implements Layer{
         this.finalWeightGradients = new float[outputSize * inputSize];
         this.finalBiasGradients = new float[outputSize];
 
+        this.wXBuffer = new float[maxBatchCapacity * outputSize];
+        this.outputCache = new float[maxBatchCapacity * outputSize];
+        this.inputGradient = new float[maxBatchCapacity * inputSize];
+
         initializeWeights();
     }
 
     private void ensureCapacity(int batchSize){
         this.currentBatchSize = batchSize;
         if (batchSize > maxBatchCapacity){
-            this.maxBatchCapacity = batchSize;
-
-            this.wXBuffer = new float[maxBatchCapacity * outputSize];
-            this.outputCache = new float[maxBatchCapacity * outputSize];
-            this.inputGradient = new float[maxBatchCapacity * inputSize];
+            throw new IllegalArgumentException("Batch size exceeded max capacity");
         }
     }
 
@@ -85,12 +86,7 @@ public class DenseLayer implements Layer{
                 currentBatchSize, outputSize
         );
 
-        if (currentBatchSize == maxBatchCapacity) {
-            return outputCache;
-        }
-        else{
-            return Arrays.copyOf(outputCache, currentBatchSize * outputSize);
-        }
+        return outputCache;
     }
 
     @Override
@@ -107,12 +103,7 @@ public class DenseLayer implements Layer{
                 inputGradient
         );
 
-        if (currentBatchSize == maxBatchCapacity) {
-            return inputGradient;
-        }
-        else{
-            return Arrays.copyOf(inputGradient, currentBatchSize * inputSize);
-        }
+        return inputGradient;
     }
 
     @Override

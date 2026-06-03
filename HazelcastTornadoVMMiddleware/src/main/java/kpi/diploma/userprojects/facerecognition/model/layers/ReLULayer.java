@@ -13,18 +13,22 @@ public class ReLULayer implements Layer{
 
     private float[] inputCache;
 
-    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
-    private float[] outputCache;
+    @GpuMemory(mode = GpuMemory.TransferMode.EVERY_EXECUTION)
+    private final float[] outputCache;
 
     @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
-    private float[] inputGradient;
+    private final float[] inputGradient;
+
+    public ReLULayer(int maxCapacity){
+        this.maxCapacity = maxCapacity;
+        this.outputCache = new float[maxCapacity];
+        this.inputGradient = new float[maxCapacity];
+    }
 
     private void ensureCapacity(int length){
         this.currentLength = length;
         if (length > maxCapacity){
-            this.maxCapacity = length;
-            this.outputCache = new float[maxCapacity];
-            this.inputGradient = new float[maxCapacity];
+            throw new IllegalArgumentException("Batch size exceeded max capacity");
         }
     }
 
@@ -35,23 +39,13 @@ public class ReLULayer implements Layer{
 
         Activations.reluForward(input, outputCache, currentLength);
 
-        if (currentLength == maxCapacity) {
-            return outputCache;
-        }
-        else{
-            return Arrays.copyOf(outputCache, currentLength);
-        }
+        return outputCache;
     }
 
     @Override public float[] backward(float[] outputGradient){
         Activations.reluBackward(inputCache, outputGradient, inputGradient, currentLength);
 
-        if (currentLength == maxCapacity) {
-            return inputGradient;
-        }
-        else{
-            return Arrays.copyOf(inputGradient, currentLength);
-        }
+        return inputGradient;
     }
 
     @Override

@@ -8,6 +8,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 public @interface GpuMemory {
-    TransferMode mode() default TransferMode.EVER_EXECUTION;
-    public enum TransferMode { ONCE, EVER_EXECUTION}
+    TransferMode mode() default TransferMode.EVERY_EXECUTION;
+    public enum TransferMode { ONCE, EVERY_EXECUTION}
 }

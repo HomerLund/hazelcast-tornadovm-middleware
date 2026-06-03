@@ -9,18 +9,22 @@ public class SigmoidLayer implements Layer{
     private int maxCapacity = 0;
     private int currentLength = 0;
 
-    @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
+    @GpuMemory(mode = GpuMemory.TransferMode.EVERY_EXECUTION)
     private float[] outputCache;
 
     @GpuMemory(mode = GpuMemory.TransferMode.ONCE)
     private float[] inputGradient;
 
+    public SigmoidLayer(int maxCapacity){
+        this.maxCapacity = maxCapacity;
+        this.outputCache = new float[maxCapacity];
+        this.inputGradient = new float[maxCapacity];
+    }
+
     private void ensureCapacity(int length){
         this.currentLength = length;
         if (length > maxCapacity){
-            this.maxCapacity = length;
-            this.outputCache = new float[maxCapacity];
-            this.inputGradient = new float[maxCapacity];
+            throw new IllegalArgumentException("Batch size exceeded max capacity");
         }
     }
 
@@ -28,25 +32,13 @@ public class SigmoidLayer implements Layer{
     public float[] forward(float[] input){
         ensureCapacity(input.length);
         Activations.sigmoidForward(input, outputCache, currentLength);
-
-        if (currentLength == maxCapacity) {
-            return outputCache;
-        }
-        else{
-            return Arrays.copyOf(outputCache, currentLength);
-        }
+        return outputCache;
     }
 
     @Override
     public float[] backward(float[] outputGradient){
         Activations.sigmoidBackward(outputCache, outputGradient, inputGradient, currentLength);
-
-        if (currentLength == maxCapacity) {
-            return inputGradient;
-        }
-        else{
-            return Arrays.copyOf(inputGradient, currentLength);
-        }
+        return inputGradient;
     }
 
     @Override
