@@ -3,15 +3,19 @@ package kpi.diploma.middleware.server.adapters.accelerator.execution;
 import kpi.diploma.middleware.client.api.context.GpuContext;
 import kpi.diploma.middleware.core.context.NodeLocalWorkspace;
 import kpi.diploma.middleware.core.logging.Logger;
+import kpi.diploma.middleware.server.adapters.accelerator.tornadovm.TornadoVMGraph;
 import kpi.diploma.middleware.server.bootstrap.accelerator.ComputeGraph;
 import kpi.diploma.middleware.server.bootstrap.accelerator.ComputePlan;
 import kpi.diploma.middleware.server.bootstrap.accelerator.HardwareAccelerator;
 import kpi.diploma.middleware.server.bootstrap.accelerator.instrumentation.GpuKernelInterceptor;
 
+import java.util.*;
 import java.util.function.Supplier;
 
 public class ServerGpuContext implements GpuContext {
     private final HardwareAccelerator accelerator;
+    private static final Set<Object> deviceAllocatedMemory = Collections.newSetFromMap(new IdentityHashMap<>());
+
 
     public ServerGpuContext(HardwareAccelerator accelerator){
         this.accelerator = accelerator;
@@ -30,11 +34,31 @@ public class ServerGpuContext implements GpuContext {
                 NodeLocalWorkspace.put(cacheKey + "_buffers", buffers);
 
                 if (buffers.onceBuffers().length > 0){
-                    graph.allocateOnDevice(buffers.onceBuffers());
+                    List<Object> toAllocate = new ArrayList<>();
+                    List<Object> toLink = new ArrayList<>();
+
+                    for (Object buffer : buffers.onceBuffers()){
+                        if (deviceAllocatedMemory.contains(buffer)){
+                            toLink.add(buffer);
+                        }
+                        else{
+                            toAllocate.add(buffer);
+                            deviceAllocatedMemory.add(buffer);
+                        }
+                    }
+
+                    if (!toAllocate.isEmpty()){
+                        graph.allocateOnDevice(toAllocate.toArray());
+                    }
+
+                    if (!toLink.isEmpty()){
+                        ((TornadoVMGraph) graph).linkExistingDeviceMemory(toLink.toArray());
+                    }
                 }
 
                 if (buffers.everExecutionBuffers().length > 0){
                     graph.copyToDevice(buffers.everExecutionBuffers());
+                    graph.copyToHost(buffers.everExecutionBuffers());
                 }
             }
 
