@@ -127,8 +127,16 @@ public class TornadoVMGraph implements ComputeGraph {
 
     @Override
     public ComputeGraph copyToHost(Object... memoryBuffers) {
-        Collections.addAll(registeredMemory, memoryBuffers);
+        //Collections.addAll(registeredMemory, memoryBuffers);
         tornadoTaskGraph.transferToHost(DataTransferMode.EVERY_EXECUTION, memoryBuffers);
+        return this;
+    }
+
+    public ComputeGraph linkExistingDeviceMemory(Object... memoryBuffers){
+        if (memoryBuffers.length > 0){
+            Collections.addAll(registeredMemory, memoryBuffers);
+            tornadoTaskGraph.transferToDevice(DataTransferMode.EVERY_EXECUTION, memoryBuffers);
+        }
         return this;
     }
 
