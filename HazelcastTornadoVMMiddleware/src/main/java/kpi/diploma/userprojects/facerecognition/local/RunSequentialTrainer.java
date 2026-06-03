@@ -12,15 +12,17 @@ public class RunSequentialTrainer {
     public static void main(String[] args){
         NeuralNetwork network = new NeuralNetwork(new BinaryCrossEntropy());
 
-        network.addLayer(new DenseLayer(196608, 128));
-        network.addLayer(new ReLULayer());
-        network.addLayer(new DenseLayer(128, 1));
-        network.addLayer(new SigmoidLayer());
+        int batchSize = 1;
+
+        network.addLayer(new DenseLayer(196608, 128, batchSize));
+        network.addLayer(new ReLULayer(128 * batchSize));
+        network.addLayer(new DenseLayer(128, 1, batchSize));
+        network.addLayer(new SigmoidLayer(batchSize));
 
         String datasetPath = Paths.get("userprojects", "facerecognition", "assets",
                 "dataset", "data", "prepared").toString();
 
-        SequentialTrainer trainer = new SequentialTrainer(network, datasetPath, 10);
+        SequentialTrainer trainer = new SequentialTrainer(network, datasetPath, 1);
 
         trainer.startTraining();
     }
