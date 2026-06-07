@@ -27,9 +27,7 @@ import kpi.diploma.userprojects.facerecognition.model.layers.DenseLayer;
 import kpi.diploma.userprojects.facerecognition.model.layers.ReLULayer;
 import kpi.diploma.userprojects.facerecognition.model.layers.SigmoidLayer;
 import kpi.diploma.userprojects.facerecognition.model.loss.BinaryCrossEntropy;
-import org.apache.commons.math3.analysis.function.Log;
 
-import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
