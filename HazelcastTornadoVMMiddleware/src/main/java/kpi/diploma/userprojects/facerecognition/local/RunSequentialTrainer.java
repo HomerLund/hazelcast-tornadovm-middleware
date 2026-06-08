@@ -10,6 +10,10 @@ import java.nio.file.Paths;
 
 public class RunSequentialTrainer {
     public static void main(String[] args){
+        startSequentialTraining();
+    }
+
+    public static void startSequentialTraining(){
         NeuralNetwork network = new NeuralNetwork(new BinaryCrossEntropy());
 
         int batchSize = 1;

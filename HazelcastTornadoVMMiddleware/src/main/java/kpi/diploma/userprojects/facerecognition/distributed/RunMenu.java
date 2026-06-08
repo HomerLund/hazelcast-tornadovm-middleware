@@ -21,6 +21,7 @@ import kpi.diploma.userprojects.facerecognition.data.runtime.processors.TensorIt
 import kpi.diploma.userprojects.facerecognition.data.runtime.processors.ToTensorProcessor;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetItem;
 import kpi.diploma.userprojects.facerecognition.data.runtime.readers.DatasetSplitReader;
+import kpi.diploma.userprojects.facerecognition.local.RunSequentialTrainer;
 import kpi.diploma.userprojects.facerecognition.model.core.NeuralNetwork;
 import kpi.diploma.userprojects.facerecognition.model.io.ModelSerializer;
 import kpi.diploma.userprojects.facerecognition.model.layers.DenseLayer;
@@ -51,25 +52,25 @@ public class RunMenu {
             String trainItemsCacheName = "trainItems", testItemsCacheName = "testItems";
 
             ResearchConsoleBuilder.create("Face Recognition Research")
-                    .addBenchmarkTask(
+                    .addStandardTask(
                             "Distribute Face Dataset to Workers",
                             () -> {
                                 distributeData(context, targetDirectoryPath, extensions);
                             })
-                    .addBenchmarkTask(
+                    .addStandardTask(
                             "Initialise Node Caches (Phase 1 Setup)",
                             () -> {
                                 initNodeCache(context, targetDirectoryPath, extensions, trainItemsCacheName, testItemsCacheName);
                             })
                     .addBenchmarkTask(
-                            "Start training (Phase 2 Run)",
+                            "Start distributed training (Phase 2 Run)",
                             () -> {
                                 startTraining(context, trainItemsCacheName, testItemsCacheName);
                             })
                     .addBenchmarkTask(
-                            "Ram test",
+                            "Start sequential training",
                             () -> {
-                                testNodeRamCache(context);
+                                RunSequentialTrainer.startSequentialTraining();
                             })
                     .addStandardTask(
                             "Set Shut Down Signal to Cluster",
@@ -89,6 +90,8 @@ public class RunMenu {
         DatasetSplitReader reader = new DatasetSplitReader(datasetPath, extensions);
         List<DatasetItem> allItems = reader.readDataset();
 
+        double[] proportions = {0.65, 0.35};
+
         DistributionJob<DatasetItem> distributionJob =
                 new DistributionJob.Builder<DatasetItem>()
                         .items(allItems)
@@ -96,6 +99,7 @@ public class RunMenu {
                         .loader(new DiskImageSourceLoader())
                         .writer(new DiskTargetWriter(targetDirectoryPath))
                         .workspace(targetDirectoryPath)
+                        .proportions(proportions)
                         .build();
 
         context.<DatasetItem>getDataDistributor().distributeData(distributionJob);
@@ -207,7 +211,7 @@ public class RunMenu {
 
                 List<ComputeJob<?>> trainPipeline =
                         DataflowJobBuilder.<DatasetItem>sourceFromNodeCache(phase.queueKey)
-                                .routeTo("cpu-engine", 2)
+                                .routeTo("cpu-engine", 4)
                                 .map(datasetItem -> {
                                     try {
                                         Path path = Paths.get(datasetItem.filePath());

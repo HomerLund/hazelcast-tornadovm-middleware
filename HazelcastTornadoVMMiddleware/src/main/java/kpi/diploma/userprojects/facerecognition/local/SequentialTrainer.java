@@ -101,7 +101,7 @@ public class SequentialTrainer {
             processed++;
 
             //System.out.println("tensor " + processed + "/" + datasetSize);
-            System.out.println("\r" + phaseName + " progress: " + processed + "/" + datasetSize);
+            //System.out.println("\r" + phaseName + " progress: " + processed + "/" + datasetSize);
         }
 
         System.out.println();
